@@ -200,7 +200,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, supermarkets }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {Object.entries(supermarketStats)
             .sort(([,a], [,b]) => b - a)
-            .map(([name, count], index) => {
+            .map(([name, count]) => {
               const supermarket = supermarkets.find(s => s.name === name);
               const supermarketProducts = products.filter(p => p.supermarketId === supermarket?.id);
               const totalValue = supermarketProducts.reduce((sum, p) => sum + (p.price * p.quantity), 0);

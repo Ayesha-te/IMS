@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Dashboard from './components/Dashboard';
 import ProductScanner from './components/ProductScanner';
 import ProductForm from './components/ProductForm';
@@ -15,7 +15,6 @@ function App() {
   const [products, setProducts] = useState<Product[]>(mockProducts);
   const [supermarkets, setSupermarkets] = useState<Supermarket[]>(mockSupermarkets);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [currentSupermarket, setCurrentSupermarket] = useState<string | null>(null);
 
   const addProduct = (product: Omit<Product, 'id'>) => {
     const newProduct = {
@@ -27,11 +26,23 @@ function App() {
 
   const updateProduct = (updatedProduct: Product) => {
     setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
-    setEditingProduct(null);
   };
 
   const deleteProduct = (id: string) => {
     setProducts(prev => prev.filter(p => p.id !== id));
+  };
+
+  const handleProductSave = (product: Product | Omit<Product, 'id'>) => {
+    if ('id' in product) {
+      // This is an existing product (editing)
+      updateProduct(product);
+    } else {
+      // This is a new product
+      addProduct(product);
+    }
+    // Return to dashboard after saving
+    setCurrentView('dashboard');
+    setEditingProduct(null);
   };
 
   const addSupermarket = (supermarket: Omit<Supermarket, 'id'>) => {
@@ -119,7 +130,7 @@ function App() {
           )}
           {currentView === 'add-product' && (
             <ProductForm 
-              onSave={editingProduct ? updateProduct : addProduct}
+              onSave={handleProductSave}
               initialProduct={editingProduct}
               onCancel={() => {
                 setCurrentView('dashboard');

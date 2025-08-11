@@ -1,5 +1,5 @@
 import React from 'react';
-import { Package, AlertTriangle, Calendar, TrendingUp, CheckCircle } from 'lucide-react';
+import { Package, AlertTriangle, TrendingUp, CheckCircle } from 'lucide-react';
 import type { Product } from '../types/Product';
 
 interface StatsCardsProps {

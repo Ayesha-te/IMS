@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Store, MapPin, Phone, Mail, Package, CheckCircle, Clock, Users } from 'lucide-react';
+import { Store, MapPin, Phone, Mail, Package, CheckCircle, Clock } from 'lucide-react';
 import type { Product, Supermarket } from '../types/Product';
 
 interface SupermarketDashboardProps {
