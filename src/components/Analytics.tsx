@@ -242,7 +242,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, supermarkets }) => {
           <TrendingUp className="w-6 h-6 text-rose-600" />
         </div>
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-          {monthlyData.map((data, index) => (
+          {monthlyData.map((data) => (
             <div key={data.month} className="text-center">
               <div className="bg-gradient-to-t from-rose-500 to-rose-300 rounded-lg mb-2" style={{height: `${(data.products / 70) * 100}px`, minHeight: '20px'}}></div>
               <p className="text-sm font-medium text-gray-800">{data.month}</p>
