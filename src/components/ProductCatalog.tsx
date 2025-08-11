@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, Package, MapPin, Star, CheckCircle, Calendar, DollarSign } from 'lucide-react';
+import { Search, Package, MapPin, CheckCircle, Calendar, DollarSign } from 'lucide-react';
 import type { Product, Supermarket } from '../types/Product';
 
 interface ProductCatalogProps {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Package, AlertTriangle, Calendar, TrendingUp } from 'lucide-react';
+import { Package } from 'lucide-react';
 import type { Product } from '../types/Product';
 import ProductList from './ProductList';
 import ExpiryAlerts from './ExpiryAlerts';

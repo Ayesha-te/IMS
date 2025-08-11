@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, TrendingUp, PieChart, Calendar, Package, Store, DollarSign, AlertTriangle } from 'lucide-react';
+import { BarChart3, TrendingUp, PieChart, Calendar, Package, Store, DollarSign } from 'lucide-react';
 import type { Product, Supermarket } from '../types/Product';
 
 interface AnalyticsProps {
