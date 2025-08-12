@@ -9,6 +9,11 @@ interface ProductFormProps {
 }
 
 const ProductForm: React.FC<ProductFormProps> = ({ onSave, initialProduct, onCancel }) => {
+  // Function to generate a random barcode
+  const generateBarcode = () => {
+    return Math.floor(100000000000 + Math.random() * 900000000000).toString();
+  };
+
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -22,7 +27,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, initialProduct, onCan
     brand: '',
     weight: '',
     origin: '',
-    barcode: '',
+    barcode: generateBarcode(),
     halalCertified: true,
     halalCertificationBody: ''
   });
@@ -58,7 +63,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, initialProduct, onCan
         id: initialProduct.id
       });
     } else {
-      onSave(formData);
+      // Generate a new barcode for new products if not already set
+      const productData = {
+        ...formData,
+        barcode: formData.barcode || generateBarcode()
+      };
+      onSave(productData);
     }
   };
 
@@ -119,23 +129,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, initialProduct, onCan
                 required
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80"
                 placeholder="Enter product name"
-              />
-            </div>
-
-            {/* Barcode */}
-            <div>
-              <label htmlFor="barcode" className="block text-sm font-medium text-gray-700 mb-2">
-                Barcode *
-              </label>
-              <input
-                type="text"
-                id="barcode"
-                name="barcode"
-                value={formData.barcode}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80"
-                placeholder="Enter product barcode"
               />
             </div>
 
