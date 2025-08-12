@@ -28,10 +28,10 @@ const ProductList: React.FC<ProductListProps> = ({
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.barcode.includes(searchTerm);
+      product.supplier.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory =
       filterCategory === "all" || product.category === filterCategory;
-    return matchesSearch && matchesCategory && product.halalCertified;
+    return matchesSearch && matchesCategory;
   });
 
   const getExpiryStatus = (expiryDate: string) => {
@@ -57,7 +57,7 @@ const ProductList: React.FC<ProductListProps> = ({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
-            placeholder="Search by name or barcode..."
+            placeholder="Search by name or supplier..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 bg-white/80"
@@ -99,7 +99,6 @@ const ProductList: React.FC<ProductListProps> = ({
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3">Quantity</th>
                 <th className="px-4 py-3">Price</th>
-                <th className="px-4 py-3">Barcode</th>
                 <th className="px-4 py-3">Supplier</th>
                 <th className="px-4 py-3">Expiry</th>
                 <th className="px-4 py-3">Actions</th>
@@ -119,9 +118,6 @@ const ProductList: React.FC<ProductListProps> = ({
                     <td className="px-4 py-3">{product.category}</td>
                     <td className="px-4 py-3">{product.quantity}</td>
                     <td className="px-4 py-3">${product.price}</td>
-                    <td className="px-4 py-3 font-mono text-sm">
-                      {product.barcode}
-                    </td>
                     <td className="px-4 py-3">{product.supplier}</td>
                     <td className="px-4 py-3">
                       <div
