@@ -13,6 +13,9 @@ interface ProductInterface {
   weight?: string;
   origin?: string;
   imageUrl?: string;
+  barcode: string;
+  halalCertified: boolean;
+  halalCertificationBody?: string;
 }
 
 interface SupermarketInterface {

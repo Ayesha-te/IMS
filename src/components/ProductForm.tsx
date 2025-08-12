@@ -21,7 +21,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, initialProduct, onCan
     description: '',
     brand: '',
     weight: '',
-    origin: ''
+    origin: '',
+    barcode: '',
+    halalCertified: true,
+    halalCertificationBody: ''
   });
 
   useEffect(() => {
@@ -38,7 +41,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, initialProduct, onCan
         description: initialProduct.description || '',
         brand: initialProduct.brand || '',
         weight: initialProduct.weight || '',
-        origin: initialProduct.origin || ''
+        origin: initialProduct.origin || '',
+        barcode: initialProduct.barcode,
+        halalCertified: initialProduct.halalCertified,
+        halalCertificationBody: initialProduct.halalCertificationBody || ''
       });
     }
   }, [initialProduct]);
@@ -116,6 +122,22 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, initialProduct, onCan
               />
             </div>
 
+            {/* Barcode */}
+            <div>
+              <label htmlFor="barcode" className="block text-sm font-medium text-gray-700 mb-2">
+                Barcode *
+              </label>
+              <input
+                type="text"
+                id="barcode"
+                name="barcode"
+                value={formData.barcode}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80"
+                placeholder="Enter product barcode"
+              />
+            </div>
 
 
             {/* Category */}
@@ -272,7 +294,35 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, initialProduct, onCan
               />
             </div>
 
+            {/* Halal Certified */}
+            <div>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="halalCertified"
+                  checked={formData.halalCertified}
+                  onChange={handleChange}
+                  className="mr-3 h-4 w-4 text-rose-600 focus:ring-rose-500 border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">Halal Certified</span>
+              </label>
+            </div>
 
+            {/* Halal Certification Body */}
+            <div>
+              <label htmlFor="halalCertificationBody" className="block text-sm font-medium text-gray-700 mb-2">
+                Halal Certification Body
+              </label>
+              <input
+                type="text"
+                id="halalCertificationBody"
+                name="halalCertificationBody"
+                value={formData.halalCertificationBody}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80"
+                placeholder="Enter certification authority"
+              />
+            </div>
           </div>
 
           {/* Action Buttons */}
