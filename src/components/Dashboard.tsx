@@ -19,18 +19,20 @@ const Dashboard: React.FC<DashboardProps> = ({ products, onEditProduct, onDelete
       
       {/* Expiry Alerts */}
       <ExpiryAlerts products={products} />
-      
+
       {/* Product List */}
       <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-rose-200 p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">Inventory Overview</h2>
-            <p className="text-gray-600">Manage your Halal-certified products</p>
+            <p className="text-gray-600">Manage your inventory products</p>
           </div>
           <div className="bg-rose-100 p-3 rounded-xl">
             <Package className="w-6 h-6 text-rose-600" />
           </div>
         </div>
+
+        {/* Product Grid - handled inside ProductList */}
         <ProductList 
           products={products} 
           onEdit={onEditProduct}

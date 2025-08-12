@@ -23,7 +23,7 @@ const ProductScanner: React.FC<ProductScannerProps> = ({ products }) => {
     
     // Simulate scanning delay
     setTimeout(() => {
-      const foundProduct = products.find(p => p.barcode === barcodeInput.trim() && p.halalCertified);
+      const foundProduct = products.find(p => p.name.toLowerCase().includes(barcodeInput.trim().toLowerCase()));
       
       if (foundProduct) {
         setScannedProduct(foundProduct);
@@ -66,7 +66,7 @@ const ProductScanner: React.FC<ProductScannerProps> = ({ products }) => {
             <Scan className="w-10 h-10 text-rose-600" />
           </div>
           <h2 className="text-3xl font-bold text-gray-800 mb-2">Product Scanner</h2>
-          <p className="text-gray-600">Scan or enter a barcode to view Halal product details</p>
+          <p className="text-gray-600">Search for products by name</p>
         </div>
 
         {/* Scanner Input */}
@@ -75,7 +75,7 @@ const ProductScanner: React.FC<ProductScannerProps> = ({ products }) => {
             <div className="flex-1 relative">
               <input
                 type="text"
-                placeholder="Enter barcode or QR code..."
+                placeholder="Enter product name to search..."
                 value={barcodeInput}
                 onChange={(e) => setBarcodeInput(e.target.value)}
                 onKeyPress={handleKeyPress}
@@ -90,12 +90,12 @@ const ProductScanner: React.FC<ProductScannerProps> = ({ products }) => {
               {isScanning ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Scanning...
+                  Searching...
                 </>
               ) : (
                 <>
                   <Search className="w-5 h-5" />
-                  Scan
+                  Search
                 </>
               )}
             </button>
@@ -106,7 +106,7 @@ const ProductScanner: React.FC<ProductScannerProps> = ({ products }) => {
               onClick={clearScan}
               className="text-gray-500 hover:text-gray-700 text-sm font-medium"
             >
-              Clear scan
+              Clear search
             </button>
           </div>
         </div>
@@ -117,7 +117,7 @@ const ProductScanner: React.FC<ProductScannerProps> = ({ products }) => {
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
               <div className="animate-pulse">
                 <Package className="w-12 h-12 text-blue-500 mx-auto mb-4" />
-                <p className="text-blue-700 font-medium">Scanning for Halal products...</p>
+                <p className="text-blue-700 font-medium">Searching for products...</p>
               </div>
             </div>
           )}
@@ -129,10 +129,10 @@ const ProductScanner: React.FC<ProductScannerProps> = ({ products }) => {
                 <div>
                   <h3 className="text-lg font-semibold text-red-800 mb-1">Product Not Found</h3>
                   <p className="text-red-600">
-                    No Halal-certified product found with barcode: <span className="font-mono">{barcodeInput}</span>
+                    No product found matching: <span className="font-mono">{barcodeInput}</span>
                   </p>
                   <p className="text-red-500 text-sm mt-2">
-                    This system only displays verified Halal products.
+                    Please check the product name and try again.
                   </p>
                 </div>
               </div>
@@ -145,8 +145,8 @@ const ProductScanner: React.FC<ProductScannerProps> = ({ products }) => {
                 <div className="flex items-center">
                   <CheckCircle className="w-8 h-8 text-emerald-600 mr-3" />
                   <div>
-                    <h3 className="text-xl font-bold text-gray-800">Halal Certified Product</h3>
-                    <p className="text-emerald-600 font-medium">Verified and approved</p>
+                    <h3 className="text-xl font-bold text-gray-800">Product Found</h3>
+                    <p className="text-emerald-600 font-medium">Product information</p>
                   </div>
                 </div>
               </div>
@@ -159,11 +159,7 @@ const ProductScanner: React.FC<ProductScannerProps> = ({ products }) => {
                   </div>
 
                   <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Barcode:</span>
-                      <span className="font-mono text-gray-800">{scannedProduct.barcode}</span>
-                    </div>
-                    
+
                     <div className="flex justify-between">
                       <span className="text-gray-600">Supplier:</span>
                       <span className="text-gray-800">{scannedProduct.supplier}</span>

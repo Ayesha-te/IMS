@@ -1,5 +1,5 @@
 import React from 'react';
-import { Package, AlertTriangle, TrendingUp, CheckCircle } from 'lucide-react';
+import { Package, AlertTriangle, TrendingUp } from 'lucide-react';
 import type { Product } from '../types/Product';
 
 interface StatsCardsProps {
@@ -9,8 +9,6 @@ interface StatsCardsProps {
 const StatsCards: React.FC<StatsCardsProps> = ({ products }) => {
   const totalProducts = products.length;
   const totalQuantity = products.reduce((sum, product) => sum + product.quantity, 0);
-  const halalCertified = products.filter(product => product.halalCertified).length;
-
   const now = new Date();
   const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const expiringProducts = products.filter(product => {
@@ -34,14 +32,6 @@ const StatsCards: React.FC<StatsCardsProps> = ({ products }) => {
       color: 'green',
       bgColor: 'bg-green-100',
       iconColor: 'text-green-600'
-    },
-    {
-      title: 'Halal Certified',
-      value: halalCertified,
-      icon: CheckCircle,
-      color: 'emerald',
-      bgColor: 'bg-emerald-100',
-      iconColor: 'text-emerald-600'
     },
     {
       title: 'Expiring Soon',

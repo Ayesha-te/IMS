@@ -11,11 +11,9 @@ interface ProductFormProps {
 const ProductForm: React.FC<ProductFormProps> = ({ onSave, initialProduct, onCancel }) => {
   const [formData, setFormData] = useState({
     name: '',
-    barcode: '',
     category: '',
     quantity: 0,
     expiryDate: '',
-    halalCertified: true,
     supplier: '',
     price: 0,
     addedDate: new Date().toISOString().split('T')[0],
@@ -23,19 +21,16 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, initialProduct, onCan
     description: '',
     brand: '',
     weight: '',
-    origin: '',
-    halalCertificationBody: ''
+    origin: ''
   });
 
   useEffect(() => {
     if (initialProduct) {
       setFormData({
         name: initialProduct.name,
-        barcode: initialProduct.barcode,
         category: initialProduct.category,
         quantity: initialProduct.quantity,
         expiryDate: initialProduct.expiryDate,
-        halalCertified: initialProduct.halalCertified,
         supplier: initialProduct.supplier,
         price: initialProduct.price,
         addedDate: initialProduct.addedDate,
@@ -43,8 +38,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, initialProduct, onCan
         description: initialProduct.description || '',
         brand: initialProduct.brand || '',
         weight: initialProduct.weight || '',
-        origin: initialProduct.origin || '',
-        halalCertificationBody: initialProduct.halalCertificationBody || ''
+        origin: initialProduct.origin || ''
       });
     }
   }, [initialProduct]);
@@ -90,7 +84,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, initialProduct, onCan
                 {initialProduct ? 'Edit Product' : 'Add New Product'}
               </h2>
               <p className="text-gray-600">
-                {initialProduct ? 'Update product information' : 'Enter details for a new Halal product'}
+                {initialProduct ? 'Update product information' : 'Enter details for a new product'}
               </p>
             </div>
           </div>
@@ -122,22 +116,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, initialProduct, onCan
               />
             </div>
 
-            {/* Barcode */}
-            <div>
-              <label htmlFor="barcode" className="block text-sm font-medium text-gray-700 mb-2">
-                Barcode *
-              </label>
-              <input
-                type="text"
-                id="barcode"
-                name="barcode"
-                value={formData.barcode}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80 font-mono"
-                placeholder="Enter barcode"
-              />
-            </div>
+
 
             {/* Category */}
             <div>
@@ -293,47 +272,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, initialProduct, onCan
               />
             </div>
 
-            {/* Halal Certification Body */}
-            <div className="md:col-span-2">
-              <label htmlFor="halalCertificationBody" className="block text-sm font-medium text-gray-700 mb-2">
-                Halal Certification Body
-              </label>
-              <select
-                id="halalCertificationBody"
-                name="halalCertificationBody"
-                value={formData.halalCertificationBody}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80"
-              >
-                <option value="">Select certification body</option>
-                <option value="Islamic Society of North America (ISNA)">Islamic Society of North America (ISNA)</option>
-                <option value="Halal Monitoring Committee (HMC)">Halal Monitoring Committee (HMC)</option>
-                <option value="Islamic Food and Nutrition Council of America (IFANCA)">Islamic Food and Nutrition Council of America (IFANCA)</option>
-                <option value="Emirates Authority for Standardization and Metrology (ESMA)">Emirates Authority for Standardization and Metrology (ESMA)</option>
-                <option value="Malaysia Halal Corporation (MHC)">Malaysia Halal Corporation (MHC)</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
 
-            {/* Halal Certified */}
-            <div className="md:col-span-2">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="halalCertified"
-                  name="halalCertified"
-                  checked={formData.halalCertified}
-                  onChange={handleChange}
-                  className="w-5 h-5 text-rose-600 border-gray-300 rounded focus:ring-rose-500"
-                />
-                <label htmlFor="halalCertified" className="ml-3 text-sm font-medium text-gray-700">
-                  This product is Halal certified
-                </label>
-              </div>
-              <p className="mt-2 text-sm text-gray-500">
-                Only Halal-certified products will be visible in the system
-              </p>
-            </div>
           </div>
 
           {/* Action Buttons */}

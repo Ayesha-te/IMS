@@ -3,13 +3,13 @@ import type { Product, Supermarket } from '../types/Product';
 export const mockSupermarkets: Supermarket[] = [
   {
     id: '1',
-    name: 'Al-Barakah Halal Market',
+    name: 'Al-Barakah Market',
     address: '123 Main Street, Downtown',
     phone: '+1-555-0123',
     email: 'info@albarakah.com',
     registrationDate: '2024-01-15',
     isVerified: true,
-    description: 'Premium Halal grocery store serving the community for over 10 years'
+    description: 'Premium grocery store serving the community for over 10 years'
   },
   {
     id: '2',
@@ -19,30 +19,30 @@ export const mockSupermarkets: Supermarket[] = [
     email: 'contact@crescentfoods.com',
     registrationDate: '2024-02-20',
     isVerified: true,
-    description: 'Your trusted source for authentic Halal products and fresh groceries'
+    description: 'Your trusted source for authentic products and fresh groceries'
   },
   {
     id: '3',
-    name: 'Halal Fresh Market',
+    name: 'Fresh Market',
     address: '789 Pine Road, Eastside',
     phone: '+1-555-0789',
     email: 'hello@halalfresh.com',
     registrationDate: '2024-03-10',
     isVerified: true,
-    description: 'Fresh, organic, and certified Halal products for your family'
+    description: 'Fresh, organic, and certified products for your family'
   }
 ];
 
 export const mockProducts: Product[] = [
-  // Al-Barakah Halal Market Products
+  // Al-Barakah Market Products
   {
     id: '1',
-    name: 'Halal Chicken Breast',
-    barcode: '123456789012',
+    name: 'Chicken Breast',
+
     category: 'Meat',
     quantity: 25,
     expiryDate: '2025-02-15',
-    halalCertified: true,
+
     supplier: 'Al-Tayyib Meats',
     price: 12.99,
     addedDate: '2024-12-15',
@@ -51,17 +51,17 @@ export const mockProducts: Product[] = [
     brand: 'Al-Tayyib',
     weight: '1 kg',
     origin: 'Local Farm',
-    halalCertificationBody: 'Islamic Society of North America (ISNA)',
+
     imageUrl: 'https://images.pexels.com/photos/616354/pexels-photo-616354.jpeg'
   },
   {
     id: '2',
-    name: 'Organic Halal Yogurt',
-    barcode: '987654321098',
+    name: 'Organic Yogurt',
+
     category: 'Dairy',
     quantity: 15,
     expiryDate: '2025-01-20',
-    halalCertified: true,
+
     supplier: 'Pure Dairy Co.',
     price: 4.50,
     addedDate: '2024-12-10',
@@ -70,17 +70,17 @@ export const mockProducts: Product[] = [
     brand: 'Pure Organic',
     weight: '500g',
     origin: 'Canada',
-    halalCertificationBody: 'Halal Monitoring Committee (HMC)'
+
   },
   {
     id: '3',
-    name: 'Halal Beef Jerky',
+    name: 'Beef Jerky',
     barcode: '456789012345',
     category: 'Snacks',
     quantity: 8,
     expiryDate: '2025-01-05',
-    halalCertified: true,
-    supplier: 'Mountain Halal Foods',
+
+    supplier: 'Mountain Foods',
     price: 8.99,
     addedDate: '2024-12-01',
     supermarketId: '1',
@@ -88,17 +88,17 @@ export const mockProducts: Product[] = [
     brand: 'Mountain Trail',
     weight: '100g',
     origin: 'USA',
-    halalCertificationBody: 'Islamic Food and Nutrition Council of America (IFANCA)'
+
   },
   // Crescent Foods Supermarket Products
   {
     id: '4',
-    name: 'Halal Lamb Chops',
+    name: 'Lamb Chops',
     barcode: '234567890123',
     category: 'Meat',
     quantity: 12,
     expiryDate: '2025-02-20',
-    halalCertified: true,
+
     supplier: 'Crescent Meats',
     price: 18.99,
     addedDate: '2024-12-12',
@@ -111,12 +111,12 @@ export const mockProducts: Product[] = [
   },
   {
     id: '5',
-    name: 'Halal Cheese Slices',
+    name: 'Cheese Slices',
     barcode: '345678901234',
     category: 'Dairy',
     quantity: 30,
     expiryDate: '2025-03-15',
-    halalCertified: true,
+
     supplier: 'Dairy Excellence',
     price: 6.75,
     addedDate: '2024-12-08',
@@ -125,16 +125,16 @@ export const mockProducts: Product[] = [
     brand: 'Dairy Gold',
     weight: '200g',
     origin: 'Netherlands',
-    halalCertificationBody: 'Halal Monitoring Committee (HMC)'
+
   },
   {
     id: '6',
-    name: 'Halal Energy Bars',
+    name: 'Energy Bars',
     barcode: '567890123456',
     category: 'Snacks',
     quantity: 45,
     expiryDate: '2025-06-30',
-    halalCertified: true,
+
     supplier: 'Healthy Bites',
     price: 3.25,
     addedDate: '2024-12-05',
@@ -143,17 +143,17 @@ export const mockProducts: Product[] = [
     brand: 'Power Plus',
     weight: '50g',
     origin: 'UAE',
-    halalCertificationBody: 'Emirates Authority for Standardization and Metrology (ESMA)'
+
   },
-  // Halal Fresh Market Products
+  // Fresh Market Products
   {
     id: '7',
-    name: 'Halal Turkey Slices',
+    name: 'Turkey Slices',
     barcode: '678901234567',
     category: 'Meat',
     quantity: 20,
     expiryDate: '2025-01-25',
-    halalCertified: true,
+
     supplier: 'Fresh Poultry Co.',
     price: 9.99,
     addedDate: '2024-12-14',
@@ -162,16 +162,16 @@ export const mockProducts: Product[] = [
     brand: 'Fresh Choice',
     weight: '300g',
     origin: 'Canada',
-    halalCertificationBody: 'Islamic Food and Nutrition Council of America (IFANCA)'
+
   },
   {
     id: '8',
-    name: 'Halal Butter',
+    name: 'Butter',
     barcode: '789012345678',
     category: 'Dairy',
     quantity: 18,
     expiryDate: '2025-04-10',
-    halalCertified: true,
+
     supplier: 'Creamy Delights',
     price: 5.50,
     addedDate: '2024-12-11',
@@ -180,16 +180,16 @@ export const mockProducts: Product[] = [
     brand: 'Golden Cream',
     weight: '250g',
     origin: 'France',
-    halalCertificationBody: 'Halal Monitoring Committee (HMC)'
+
   },
   {
     id: '9',
-    name: 'Halal Fruit Gummies',
+    name: 'Fruit Gummies',
     barcode: '890123456789',
     category: 'Snacks',
     quantity: 35,
     expiryDate: '2025-08-15',
-    halalCertified: true,
+
     supplier: 'Sweet Treats Inc.',
     price: 2.99,
     addedDate: '2024-12-09',
@@ -203,12 +203,12 @@ export const mockProducts: Product[] = [
   // Additional products across different categories
   {
     id: '10',
-    name: 'Halal Chicken Nuggets',
+    name: 'Chicken Nuggets',
     barcode: '901234567890',
     category: 'Frozen',
     quantity: 22,
     expiryDate: '2025-05-20',
-    halalCertified: true,
+
     supplier: 'Frozen Delights',
     price: 7.99,
     addedDate: '2024-12-13',
@@ -217,16 +217,16 @@ export const mockProducts: Product[] = [
     brand: 'Quick Bites',
     weight: '400g',
     origin: 'USA',
-    halalCertificationBody: 'Islamic Food and Nutrition Council of America (IFANCA)'
+
   },
   {
     id: '11',
-    name: 'Halal Olive Oil',
+    name: 'Olive Oil',
     barcode: '012345678901',
     category: 'Condiments',
     quantity: 28,
     expiryDate: '2026-01-15',
-    halalCertified: true,
+
     supplier: 'Mediterranean Oils',
     price: 12.50,
     addedDate: '2024-12-07',
@@ -235,16 +235,16 @@ export const mockProducts: Product[] = [
     brand: 'Golden Olive',
     weight: '500ml',
     origin: 'Spain',
-    halalCertificationBody: 'Halal Monitoring Committee (HMC)'
+
   },
   {
     id: '12',
-    name: 'Halal Whole Wheat Bread',
+    name: 'Whole Wheat Bread',
     barcode: '123450987654',
     category: 'Bakery',
     quantity: 15,
     expiryDate: '2025-01-18',
-    halalCertified: true,
+
     supplier: 'Artisan Bakery',
     price: 3.75,
     addedDate: '2024-12-16',
@@ -257,12 +257,12 @@ export const mockProducts: Product[] = [
   },
   {
     id: '13',
-    name: 'Halal Orange Juice',
+    name: 'Orange Juice',
     barcode: '234561098765',
     category: 'Beverages',
     quantity: 40,
     expiryDate: '2025-02-28',
-    halalCertified: true,
+
     supplier: 'Fresh Juice Co.',
     price: 4.25,
     addedDate: '2024-12-06',
@@ -271,16 +271,16 @@ export const mockProducts: Product[] = [
     brand: 'Pure Fresh',
     weight: '1L',
     origin: 'Florida, USA',
-    halalCertificationBody: 'Islamic Food and Nutrition Council of America (IFANCA)'
+
   },
   {
     id: '14',
-    name: 'Halal Basmati Rice',
+    name: 'Basmati Rice',
     barcode: '345672109876',
     category: 'Grains',
     quantity: 50,
     expiryDate: '2025-12-31',
-    halalCertified: true,
+
     supplier: 'Premium Grains',
     price: 15.99,
     addedDate: '2024-12-04',
@@ -289,16 +289,16 @@ export const mockProducts: Product[] = [
     brand: 'Royal Basmati',
     weight: '5kg',
     origin: 'Pakistan',
-    halalCertificationBody: 'Halal Monitoring Committee (HMC)'
+
   },
   {
     id: '15',
-    name: 'Halal Honey',
+    name: 'Honey',
     barcode: '456783210987',
     category: 'Condiments',
     quantity: 25,
     expiryDate: '2026-06-15',
-    halalCertified: true,
+
     supplier: 'Natural Honey Co.',
     price: 8.75,
     addedDate: '2024-12-03',

@@ -1,11 +1,9 @@
 interface ProductInterface {
   id: string;
   name: string;
-  barcode: string;
   category: string;
   quantity: number;
   expiryDate: string;
-  halalCertified: boolean;
   supplier: string;
   price: number;
   addedDate: string;
@@ -14,7 +12,6 @@ interface ProductInterface {
   brand?: string;
   weight?: string;
   origin?: string;
-  halalCertificationBody?: string;
   imageUrl?: string;
 }
 
