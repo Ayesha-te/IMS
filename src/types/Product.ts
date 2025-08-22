@@ -52,6 +52,9 @@ interface UserInterface {
   name: string;
   registrationDate: string;
   isVerified: boolean;
+  company_name?: string;
+  address?: string;
+  phone?: string;
   subscription?: {
     plan: 'free' | 'basic' | 'premium';
     expiryDate?: string;
