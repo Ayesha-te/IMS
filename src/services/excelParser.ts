@@ -38,7 +38,11 @@ export async function parseExcelFile(file: File): Promise<Partial<Product>[]> {
         
         resolve(products);
       } catch (error) {
-        reject(error);
+        if (error instanceof Error) {
+          reject(new Error(error.message));
+        } else {
+          reject(new Error(String(error)));
+        }
       }
     };
     

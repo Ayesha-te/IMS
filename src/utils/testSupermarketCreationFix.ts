@@ -38,7 +38,7 @@ export const testSupermarketCreationFix = async () => {
     const allSupermarkets = await SupermarketService.getSupermarkets();
     const supermarketsArray = Array.isArray(allSupermarkets) ? allSupermarkets : allSupermarkets.results || [];
     
-    const foundSupermarket = supermarketsArray.find(s => s.id === apiResult.id);
+    const foundSupermarket = supermarketsArray.find((s: any) => s.id === apiResult.id);
     if (foundSupermarket) {
       console.log('✅ Supermarket found in database:', foundSupermarket);
     } else {
@@ -62,7 +62,7 @@ export const testSupermarketCreationFix = async () => {
     const finalArray = Array.isArray(finalSupermarkets) ? finalSupermarkets : finalSupermarkets.results || [];
     
     console.log(`✅ Total supermarkets in database: ${finalArray.length}`);
-    console.log('✅ Recent supermarkets:', finalArray.slice(-3).map(s => ({ id: s.id, name: s.name })));
+    console.log('✅ Recent supermarkets:', finalArray.slice(-3).map((s: any) => ({ id: s.id, name: s.name })));
     
     return {
       success: true,

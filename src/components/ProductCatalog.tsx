@@ -37,7 +37,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, supermarkets 
     .filter(product => {
       const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            product.brand?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           product.barcode.includes(searchTerm);
+                           String(product.barcode ?? '').includes(searchTerm);
       const matchesCategory = filterCategory === 'all' || String(product.category).trim() === filterCategory;
 
       // Accept either ID or Store Name saved in product.supermarketId

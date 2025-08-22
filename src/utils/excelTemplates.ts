@@ -142,7 +142,18 @@ export const COMMON_CATEGORIES = [
   "Test Category"
 ];
 
-export const VALIDATION_RULES = {
+// Validation rule type for fields
+export type FieldType = 'string' | 'number' | 'date' | 'boolean';
+
+export interface Rule {
+  required?: boolean;
+  type?: FieldType;
+  maxLength?: number;
+  min?: number;
+}
+
+// Validation rules per field
+export const VALIDATION_RULES: Record<keyof ExcelProductRow, Rule> = {
   name: { required: true, maxLength: 255 },
   category: { required: true, maxLength: 100 },
   supplier: { required: true, maxLength: 255 },

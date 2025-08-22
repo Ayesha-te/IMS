@@ -87,8 +87,8 @@ export async function bulkCreateProducts() {
     
     console.log('Bulk creation result:', {
       total: result.total,
-      successful: result.successCount,
-      failed: result.errorCount,
+      successful: result.successful,
+      failed: result.failed,
       errors: result.errors
     });
     
@@ -196,7 +196,7 @@ export async function completeWorkflow() {
     const result = await validateAndCreateProducts(excelProducts);
     
     console.log('\n=== Workflow Complete ===');
-    console.log(`Successfully created ${result.successCount} out of ${result.total} products`);
+    console.log(`Successfully created ${result.successful} out of ${result.total} products`);
     
     if (result.errors.length > 0) {
       console.log('Errors encountered:', result.errors);

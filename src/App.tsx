@@ -223,12 +223,12 @@ function App() {
         isSubStore: supermarket.isSubStore || false,
         posSystem: {
           enabled: false,
-          type: 'none',
+          type: 'none' as const,
           syncEnabled: false
         }
-      };
+      } as const;
       
-      setSupermarkets(prev => [...prev, newSupermarket]);
+      setSupermarkets((prev) => [...prev, newSupermarket as any]);
       alert('Supermarket created successfully!');
     } catch (error) {
       console.error('Failed to create supermarket:', error);

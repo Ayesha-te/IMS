@@ -294,8 +294,10 @@ const BulkProductImport: React.FC = () => {
             <div style={{ padding: '10px', backgroundColor: '#ffebee', border: '1px solid #f44336', borderRadius: '4px' }}>
               <h4 style={{ color: '#d32f2f', margin: '0 0 10px 0' }}>Import Errors:</h4>
               <ul style={{ margin: 0, paddingLeft: '20px', maxHeight: '200px', overflowY: 'auto' }}>
-                {lastImportResult.errors.map((error, index) => (
-                  <li key={index} style={{ color: '#d32f2f', fontSize: '14px', marginBottom: '5px' }}>{error}</li>
+                {lastImportResult.errors.map((e, index) => (
+                  <li key={index} style={{ color: '#d32f2f', fontSize: '14px', marginBottom: '5px' }}>
+                    {typeof e === 'string' ? e : `${e.product?.name ?? 'Unknown'}: ${e.error ?? ''}`}
+                  </li>
                 ))}
               </ul>
             </div>

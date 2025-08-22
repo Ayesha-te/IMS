@@ -164,7 +164,11 @@ export const errorHandlingExample = async () => {
     
     await ProductService.createProductWithNames(productWithInvalidNames);
   } catch (error) {
-    console.log('Expected error caught:', error.message);
+    if (error instanceof Error) {
+      console.log('Expected error caught:', error.message);
+    } else {
+      console.log('Expected error caught:', String(error));
+    }
     
     // The error message will include available categories
     // Example: "Category not found: 'NonExistentCategory'. Available categories: Fruits, Bakery, Dairy, Beverages"

@@ -65,16 +65,13 @@ const BarcodeTicketManager: React.FC<BarcodeTicketManagerProps> = ({
     content: () => printRef.current,
     documentTitle: `Product ${viewMode === 'tickets' ? 'Tickets' : 'Barcodes'}`,
     pageStyle: `
-      @page {
-        size: A4;
-        margin: 10mm;
-      }
+      @page { size: A4; margin: 10mm; }
       @media print {
         body { -webkit-print-color-adjust: exact; }
         .no-print { display: none !important; }
       }
-    `
-  });
+    ` as string
+  } as any);
 
   // Export to PDF
   const handleExportPDF = async () => {
@@ -297,7 +294,7 @@ const BarcodeTicketManager: React.FC<BarcodeTicketManagerProps> = ({
             </div>
             
             <div className="text-sm text-gray-600 space-y-1">
-              <div>Price: $${toMoney(product.price).toFixed(2)}</div>
+              <div>Price: ${toMoney(product.price).toFixed(2)}</div>
               <div>Barcode: {product.barcode}</div>
               {product.category && <div>Category: {product.category}</div>}
             </div>
@@ -360,7 +357,7 @@ const BarcodeTicketManager: React.FC<BarcodeTicketManagerProps> = ({
                 {selectedProductsData.map((product) => (
                   <div key={product.id} className="text-center p-4 border border-gray-200 rounded">
                     <BarcodeGenerator 
-                      value={product.barcode}
+                      value={product.barcode || ''}
                       width={1.5}
                       height={60}
                       fontSize={12}

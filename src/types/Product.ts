@@ -13,7 +13,7 @@ interface ProductInterface {
   weight?: string;
   origin?: string;
   imageUrl?: string;
-  barcode: string;
+  barcode?: string;
   halalCertified: boolean;
   halalCertificationBody?: string;
   costPrice?: number;

@@ -7,11 +7,22 @@ import { useState, useCallback } from 'react';
 import { ProductService, MappingService, type ProductWithNames } from '../services/apiService';
 
 interface ImportResult {
-  success: any[];
-  errors: string[];
   total: number;
-  successCount: number;
-  errorCount: number;
+  successful: number;
+  failed: number;
+  results: Array<{
+    index: number;
+    product: ProductWithNames;
+    success: boolean;
+    error?: string;
+    result?: any;
+  }>;
+  errors: Array<{
+    index: number;
+    product: ProductWithNames;
+    error: string;
+    success: false;
+  }>;
 }
 
 interface ValidationOptions {
@@ -135,8 +146,8 @@ export const useBulkProductImport = () => {
       console.log('Starting bulk import...');
       const result = await ProductService.bulkCreateProductsWithNames(products);
       
-      setLastImportResult(result);
-      return result;
+      setLastImportResult(result as unknown as ImportResult);
+      return result as unknown as ImportResult;
 
     } catch (error) {
       console.error('Import failed:', error);
@@ -154,8 +165,8 @@ export const useBulkProductImport = () => {
       setIsLoading(true);
       console.log('Starting bulk import without validation...');
       const result = await ProductService.bulkCreateProductsWithNames(products);
-      setLastImportResult(result);
-      return result;
+      setLastImportResult(result as unknown as ImportResult);
+      return result as unknown as ImportResult;
     } catch (error) {
       console.error('Import failed:', error);
       throw error;
@@ -195,10 +206,10 @@ export const useBulkProductImport = () => {
 
     return {
       total: lastImportResult.total,
-      successful: lastImportResult.successCount,
-      failed: lastImportResult.errorCount,
+      successful: (lastImportResult as any).successful ?? (lastImportResult as any).successCount ?? (lastImportResult as any).results?.filter((r: any) => r.success).length ?? 0,
+      failed: (lastImportResult as any).failed ?? (lastImportResult as any).errorCount ?? (lastImportResult as any).results?.filter((r: any) => !r.success).length ?? 0,
       successRate: lastImportResult.total > 0 
-        ? Math.round((lastImportResult.successCount / lastImportResult.total) * 100) 
+        ? Math.round((((lastImportResult as any).successful ?? (lastImportResult as any).successCount ?? (lastImportResult as any).results?.filter((r: any) => r.success).length ?? 0) / lastImportResult.total) * 100) 
         : 0
     };
   }, [lastImportResult]);

@@ -10,7 +10,7 @@ export async function basicExcelImport(
   file: File,
   categories: { id: number; name: string }[],
   suppliers: { id: number; name: string }[],
-  supermarketId: number,
+  supermarketId: string,
   jwtToken: string
 ) {
   try {
@@ -35,7 +35,7 @@ export async function advancedExcelImport(
   file: File,
   categories: { id: number; name: string }[],
   suppliers: { id: number; name: string }[],
-  supermarketId: number,
+  supermarketId: string,
   jwtToken: string
 ) {
   try {
@@ -79,7 +79,7 @@ export async function conservativeExcelImport(
   file: File,
   categories: { id: number; name: string }[],
   suppliers: { id: number; name: string }[],
-  supermarketId: number,
+  supermarketId: string,
   jwtToken: string
 ) {
   try {

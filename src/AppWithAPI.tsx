@@ -14,7 +14,7 @@ import POSSync from './components/POSSync';
 import DashboardGraphs from './components/DashboardGraphs';
 import BarcodeTicketManager from './components/BarcodeTicketManager';
 
-import type { Product } from './types/Product';
+import type { Product, User } from './types/Product';
 
 // Main App Content Component
 const AppContent: React.FC = () => {
@@ -285,10 +285,10 @@ const AppContent: React.FC = () => {
           console.log("No supermarket found even in fresh data, creating default supermarket...");
           
           const defaultSupermarketData = {
-            name: user?.company_name || `${user?.first_name || 'My'} Supermarket` || 'Default Supermarket',
+            name: (user as any)?.company_name || `${user?.first_name || 'My'} Supermarket` || 'Default Supermarket',
             description: 'Default supermarket created automatically',
-            address: user?.address || 'Address not provided',
-            phone: user?.phone || 'Phone not provided',
+            address: (user as any)?.address || 'Address not provided',
+            phone: (user as any)?.phone || 'Phone not provided',
             email: user?.email || 'admin@example.com',
             is_active: true
           };

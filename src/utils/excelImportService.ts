@@ -94,7 +94,7 @@ export async function handleExcelUploadEnhanced(
   const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
-  const rows: ExcelRow[] = XLSX.utils.sheet_to_json(sheet);
+  const rows = XLSX.utils.sheet_to_json<ExcelRow>(sheet) as ExcelRow[];
 
   console.log(`📊 Parsed ${rows.length} rows from Excel file`);
 
@@ -179,8 +179,8 @@ export async function handleExcelUploadEnhanced(
         return isNaN(num) ? NaN : num;
       };
 
-      const rawCost = row.cost_price ?? row.price ?? row['Cost Price'] ?? row['cost price'] ?? row['Price'];
-      const rawSelling = row.selling_price ?? row.price ?? row['Selling Price'] ?? row['selling price'] ?? row['Price'];
+      const rawCost = (row as any).cost_price ?? (row as any).price ?? (row as any)['Cost Price'] ?? (row as any)['cost price'] ?? (row as any)['Price'];
+      const rawSelling = (row as any).selling_price ?? (row as any).price ?? (row as any)['Selling Price'] ?? (row as any)['selling price'] ?? (row as any)['Price'];
 
       let costPrice = toNumber(rawCost);
       let sellingPrice = toNumber(rawSelling);
@@ -204,13 +204,13 @@ export async function handleExcelUploadEnhanced(
         category: categoryId,
         supplier: supplierId,
         supermarket: supermarketId,
-        quantity: Number(row.quantity ?? row.Quantity ?? 0) || 0,
+        quantity: Number((row as any).quantity ?? (row as any).Quantity ?? 0) || 0,
         cost_price: costPrice,
         selling_price: sellingPrice,
         price: sellingPrice, // Set current price to selling price
         expiry_date: expiryDate,
         barcode: ((): string => {
-          const rawBarcode: any = row.barcode ?? row['Barcode'] ?? row.upc ?? row.UPC;
+          const rawBarcode: any = (row as any).barcode ?? (row as any)['Barcode'] ?? (row as any).upc ?? (row as any).UPC;
           const b = rawBarcode !== undefined && rawBarcode !== null ? String(rawBarcode).trim() : '';
           return b || generateBarcode();
         })(),

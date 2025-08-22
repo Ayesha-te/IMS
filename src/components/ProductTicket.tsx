@@ -82,7 +82,7 @@ const ProductTicket = forwardRef<HTMLDivElement, ProductTicketProps>(({
         style={{ marginBottom: `${dimensions[ticketSize].padding * 3}px` }}
       >
         <BarcodeGenerator 
-          value={product.barcode}
+          value={product.barcode || ''}
           width={ticketSize === 'small' ? 1.2 : ticketSize === 'medium' ? 1.5 : 1.8}
           height={dimensions[ticketSize].barcodeHeight}
           fontSize={dimensions[ticketSize].fontSize}

@@ -66,7 +66,7 @@ export const testSupermarketFix = async () => {
         return { success: false, message: 'Supermarket creation issue' };
       }
     } else {
-      console.log('✅ Supermarkets already exist:', supermarketsArray.map(s => s.name));
+      console.log('✅ Supermarkets already exist:', supermarketsArray.map((s: any) => s.name));
       console.log('🎉 SUCCESS: Supermarkets are available!');
       return { success: true, message: 'Supermarkets already exist', supermarkets: supermarketsArray };
     }

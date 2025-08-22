@@ -730,29 +730,29 @@ export class MappingService {
     const categoriesArray = Array.isArray(categories) ? categories : Object.values(categories || {});
     
     // Find matching category
-    const category = categoriesArray.find(c => 
+    const category = (categoriesArray as Array<{id:number; name:string}>).find((c) => 
       c.name.toLowerCase().trim() === product.category.toLowerCase().trim()
     );
     if (!category) {
-      throw new Error(`Category not found: "${product.category}". Available categories: ${categoriesArray.map(c => c.name).join(', ')}`);
+      throw new Error(`Category not found: "${product.category}". Available categories: ${(categoriesArray as any[]).map((c:any) => c.name).join(', ')}`);
     }
 
     // Ensure suppliers is an array
     const suppliersArray = Array.isArray(suppliers) ? suppliers : Object.values(suppliers || {});
     
     // Find matching supplier
-    const supplier = suppliersArray.find(s => 
+    const supplier = (suppliersArray as Array<{id:number; name:string}>).find((s) => 
       s.name.toLowerCase().trim() === product.supplier.toLowerCase().trim()
     );
     if (!supplier) {
-      throw new Error(`Supplier not found: "${product.supplier}". Available suppliers: ${suppliersArray.map(s => s.name).join(', ')}`);
+      throw new Error(`Supplier not found: "${product.supplier}". Available suppliers: ${(suppliersArray as any[]).map((s:any) => s.name).join(', ')}`);
     }
 
     // Ensure supermarkets is an array
     const supermarketsArray = Array.isArray(supermarkets) ? supermarkets : Object.values(supermarkets || {});
     
     // Find matching supermarket
-    let supermarket = supermarketsArray.find(s => 
+    let supermarket = (supermarketsArray as Array<{id:number; name:string; address?:string; phone?:string}>).find((s) => 
       s.name.toLowerCase().trim() === product.supermarket.toLowerCase().trim()
     );
     
@@ -783,17 +783,17 @@ export class MappingService {
         
         // Use the newly created supermarket
         supermarket = {
-          id: newSupermarket.id,
-          name: newSupermarket.name,
-          address: newSupermarket.address,
-          phone: newSupermarket.phone
-        };
+          id: (newSupermarket as any).id,
+          name: (newSupermarket as any).name,
+          address: (newSupermarket as any).address,
+          phone: (newSupermarket as any).phone
+        } as any;
       } catch (error) {
         console.error(`Failed to create supermarket "${product.supermarket}":`, error);
         throw new Error(
           `Supermarket not found: "${product.supermarket}" and failed to create it. ` +
           `Error: ${error instanceof Error ? error.message : 'Unknown error'}. ` +
-          `Available supermarkets: ${supermarketsArray.map(s => s.name).join(', ')}`
+          `Available supermarkets: ${(supermarketsArray as any[]).map((s:any) => s.name).join(', ')}`
         );
       }
     }
@@ -801,9 +801,9 @@ export class MappingService {
     // Return product with IDs
     return {
       ...product,
-      category: category.id,
-      supplier: supplier.id,
-      supermarket: supermarket.id,
+      category: (category as any).id,
+      supplier: (supplier as any).id,
+      supermarket: String((supermarket as any)?.id ?? ''),
     };
   }
 
@@ -854,9 +854,9 @@ export class MappingService {
     const supermarketsArray = Array.isArray(supermarkets) ? supermarkets : Object.values(supermarkets || {});
 
     return {
-      categories: categoriesArray.map(c => c.name),
-      suppliers: suppliersArray.map(s => s.name),
-      supermarkets: supermarketsArray.map(s => s.name),
+      categories: (categoriesArray as any[]).map((c:any) => c.name),
+      suppliers: (suppliersArray as any[]).map((s:any) => s.name),
+      supermarkets: (supermarketsArray as any[]).map((s:any) => s.name),
     };
   }
 }

@@ -60,7 +60,7 @@ export const testBackendFrontendAlignment = async () => {
     const allSupermarkets = await SupermarketService.getSupermarkets();
     const supermarketsArray = Array.isArray(allSupermarkets) ? allSupermarkets : allSupermarkets.results || [];
     
-    const foundSupermarket = supermarketsArray.find(s => s.id === createdSupermarket.id);
+    const foundSupermarket = supermarketsArray.find((s: any) => s.id === createdSupermarket.id);
     if (foundSupermarket) {
       console.log('✅ Created supermarket found in database');
       console.log('Verifying fields:');

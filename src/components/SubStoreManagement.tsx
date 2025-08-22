@@ -5,7 +5,7 @@ import type { Supermarket, Product } from '../types/Product';
 interface SubStoreManagementProps {
   supermarkets: Supermarket[];
   products: Product[];
-  currentUser: { id: string; name: string };
+  currentUser: { id: string; name?: string };
   onAddSupermarket: (supermarket: Omit<Supermarket, 'id'>) => Promise<void>;
   onUpdateSupermarket: (supermarket: Supermarket) => void;
   onDeleteSupermarket: (id: string) => void;

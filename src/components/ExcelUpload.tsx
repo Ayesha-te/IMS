@@ -215,9 +215,14 @@ const ExcelUpload: React.FC<ExcelUploadProps> = ({ onProductsExtracted, onCancel
           description: r.product.description || '',
           location: r.product.location || '',
           addedDate: new Date().toISOString().split('T')[0],
-          expiryDate: typeof r.product.expiry_date === 'string' ? r.product.expiry_date : (r.product.expiry_date ? r.product.expiry_date.toISOString().split('T')[0] : ''),
+          expiryDate: (() => {
+            const ed = r.product.expiry_date as any;
+            if (typeof ed === 'string') return ed;
+            if (ed && typeof ed === 'object' && typeof ed.toISOString === 'function') return ed.toISOString().split('T')[0];
+            return '';
+          })(),
           supermarketId: supermarketId || '',
-          halalCertified: r.product.halal_certified ?? true,
+          halalCertified: typeof r.product.halal_certified === 'string' ? r.product.halal_certified.toLowerCase() === 'true' : (r.product.halal_certified ?? true),
           halalCertificationBody: r.product.halal_certification_body || '',
           syncedWithPOS: false
         }));

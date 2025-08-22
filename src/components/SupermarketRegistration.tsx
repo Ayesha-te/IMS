@@ -3,7 +3,7 @@ import { Save, X, Store, MapPin, Phone, Mail, FileText } from 'lucide-react';
 import type { Supermarket } from '../types/Product';
 
 interface SupermarketRegistrationProps {
-  onSave: (supermarket: Omit<Supermarket, 'id'>) => void;
+  onSave: (supermarket: Omit<Supermarket, 'id' | 'ownerId' | 'posSystem'>) => void;
   onCancel: () => void;
 }
 

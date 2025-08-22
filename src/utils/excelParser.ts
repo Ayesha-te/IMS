@@ -45,7 +45,8 @@ export const parseExcelWithXLSX = async (file: File): Promise<ProductWithNames[]
         
         resolve(products);
       } catch (error) {
-        reject(new Error(`Failed to parse Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`));
+        const msg = error instanceof Error ? error.message : String(error);
+        reject(new Error(`Failed to parse Excel file: ${msg}`));
       }
     };
     
@@ -88,7 +89,7 @@ export const parseCSV = async (file: File): Promise<ProductWithNames[]> => {
             const product = convertRowToProduct(row, i + 1);
             products.push(product);
           } catch (error) {
-            console.warn(`Row ${i + 1} skipped:`, error);
+            console.warn(`Row ${i + 1} skipped:`, error instanceof Error ? error.message : String(error));
           }
         }
         
