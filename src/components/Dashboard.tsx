@@ -2,8 +2,6 @@ import React from 'react';
 import { Package } from 'lucide-react';
 import type { Product } from '../types/Product';
 import ProductList from './ProductList';
-import ExpiryAlerts from './ExpiryAlerts';
-import StatsCards from './StatsCards';
 
 interface DashboardProps {
   products: Product[];
@@ -14,13 +12,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ products, onEditProduct, onDeleteProduct }) => {
   return (
     <div className="space-y-8">
-      {/* Stats Cards */}
-      <StatsCards products={products} />
-      
-      {/* Expiry Alerts */}
-      <ExpiryAlerts products={products} />
-
-      {/* Product List */}
+      {/* Inventory Overview */}
       <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-rose-200 p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -32,7 +24,7 @@ const Dashboard: React.FC<DashboardProps> = ({ products, onEditProduct, onDelete
           </div>
         </div>
 
-        {/* Product Grid - handled inside ProductList */}
+        {/* Product List */}
         <ProductList 
           products={products} 
           onEdit={onEditProduct}

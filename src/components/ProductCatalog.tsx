@@ -11,33 +11,76 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, supermarkets 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterSupermarket, setFilterSupermarket] = useState('all');
-  const [sortBy, setSortBy] = useState('name');
+  const [sortBy, setSortBy] = useState('price-high');
 
-  const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))];
+  // Build non-empty category list
+  const categories = ['all', ...Array.from(new Set(products.map(p => p.category).filter(c => !!c && String(c).trim() !== '')))] as string[];
 
-  const getSupermarketName = (supermarketId: string) => {
-    const supermarket = supermarkets.find(s => s.id === supermarketId);
-    return supermarket?.name || 'Unknown Store';
+  // Resolve a supermarket display name from either an ID or a name value
+  const getSupermarketName = (supermarketRef: string) => {
+    if (!supermarketRef) return 'Unknown Store';
+    // Try by ID first
+    const byId = supermarkets.find(s => String(s.id) === String(supermarketRef));
+    if (byId) return byId.name;
+    // Then try by name (handles older data where supermarketId stored the name)
+    const byName = supermarkets.find(
+      s => String(s.name).trim().toLowerCase() === String(supermarketRef).trim().toLowerCase()
+    );
+    if (byName) return byName.name;
+    // Fallback to whatever was stored so at least something is shown
+    return supermarketRef || 'Unknown Store';
   };
+
+  const selectedStore = supermarkets.find(s => String(s.id) === String(filterSupermarket));
 
   const filteredProducts = products
     .filter(product => {
       const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            product.brand?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            product.barcode.includes(searchTerm);
-      const matchesCategory = filterCategory === 'all' || product.category === filterCategory;
-      const matchesSupermarket = filterSupermarket === 'all' || product.supermarketId === filterSupermarket;
-      return matchesSearch && matchesCategory && matchesSupermarket && product.halalCertified;
+      const matchesCategory = filterCategory === 'all' || String(product.category).trim() === filterCategory;
+
+      // Accept either ID or Store Name saved in product.supermarketId
+      const productStoreRef = String(product.supermarketId ?? '').trim();
+      const matchesSupermarket = filterSupermarket === 'all' || (
+        selectedStore && (
+          // Direct ID match
+          productStoreRef === String(selectedStore.id) ||
+          // Direct name match (if product stored the name)
+          productStoreRef.toLowerCase() === String(selectedStore.name).trim().toLowerCase() ||
+          // Name resolved from ID matches selected store name
+          getSupermarketName(productStoreRef).toLowerCase() === String(selectedStore.name).trim().toLowerCase()
+        )
+      );
+
+      return matchesSearch && matchesCategory && matchesSupermarket && (product.halalCertified ?? true);
     })
     .sort((a, b) => {
+      const numA = (val: any) => Number(val ?? 0);
+      const priceA = numA((a as any).sellingPrice ?? a.price);
+      const priceB = numA((b as any).sellingPrice ?? b.price);
+      const parseExpiry = (d: string) => {
+        const t = new Date(d).getTime();
+        return Number.isNaN(t) ? Infinity : t;
+      };
+
       switch (sortBy) {
-        case 'price-low': return a.price - b.price;
-        case 'price-high': return b.price - a.price;
-        case 'expiry': return new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
-        case 'quantity': return b.quantity - a.quantity;
+        case 'price-low': return priceA - priceB;
+        case 'price-high': return priceB - priceA;
+        case 'expiry': return parseExpiry(a.expiryDate) - parseExpiry(b.expiryDate);
+        case 'quantity': return numA(a.quantity) - numA(b.quantity);
         default: return a.name.localeCompare(b.name);
       }
     });
+
+  // Debug: how many match selected store
+  try {
+    if (filterSupermarket !== 'all') {
+      const idMatches = products.filter(p => String(p.supermarketId) === String(filterSupermarket)).length;
+      // eslint-disable-next-line no-console
+      console.log('Catalog debug — selected store:', filterSupermarket, 'ID matches:', idMatches, 'after filter:', filteredProducts.length);
+    }
+  } catch {}
 
   const getExpiryStatus = (expiryDate: string) => {
     const now = new Date();

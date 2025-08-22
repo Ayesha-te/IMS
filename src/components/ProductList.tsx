@@ -6,8 +6,13 @@ import {
   Calendar,
   Search,
   Filter,
+  BarChart3,
+  FileText,
+  Download,
 } from "lucide-react";
 import type { Product } from "../types/Product";
+import BarcodeTicketManager from "./BarcodeTicketManager";
+import barcodeService from "../services/barcodeService";
 
 interface ProductListProps {
   products: Product[];
@@ -22,15 +27,20 @@ const ProductList: React.FC<ProductListProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [showBarcodeManager, setShowBarcodeManager] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
-  const categories = ["all", ...new Set(products.map((p) => p.category))];
+  const categories = [
+    "all",
+    ...Array.from(new Set(products.map((p) => p.category).filter(c => !!c && String(c).trim() !== "")))
+  ] as string[];
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.supplier.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory =
-      filterCategory === "all" || product.category === filterCategory;
+      filterCategory === "all" || String(product.category).trim() === filterCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -49,8 +59,62 @@ const ProductList: React.FC<ProductListProps> = ({
     fresh: "bg-green-100 text-green-800 border-green-200",
   };
 
+  // Download individual barcode
+  const downloadBarcode = async (product: Product) => {
+    try {
+      await barcodeService.downloadBarcodeImage(product.id, product.name);
+    } catch (error) {
+      console.error('Error downloading barcode:', error);
+      alert('Failed to download barcode. Please try again.');
+    }
+  };
+
+  // Download individual ticket
+  const downloadTicket = async (product: Product) => {
+    try {
+      await barcodeService.downloadTicketPDF(product.id, product.name);
+    } catch (error) {
+      console.error('Error downloading ticket:', error);
+      alert('Failed to download ticket. Please try again.');
+    }
+  };
+
+  if (showBarcodeManager) {
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={() => setShowBarcodeManager(false)}
+            className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            ← Back to Product List
+          </button>
+        </div>
+        <BarcodeTicketManager
+          products={filteredProducts}
+          selectedProducts={selectedProducts}
+          onSelectionChange={setSelectedProducts}
+        />
+      </div>
+    );
+  }
+
   return (
     <div>
+      {/* Header with Actions */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">Product Inventory</h2>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setShowBarcodeManager(true)}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Barcode & Tickets</span>
+          </button>
+        </div>
+      </div>
+
       {/* Search + Filter */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="flex-1 relative">
@@ -97,6 +161,7 @@ const ProductList: React.FC<ProductListProps> = ({
               <tr className="bg-gray-100 text-left">
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Category</th>
+                <th className="px-4 py-3">Barcode</th>
                 <th className="px-4 py-3">Quantity</th>
                 <th className="px-4 py-3">Price</th>
                 <th className="px-4 py-3">Supplier</th>
@@ -116,6 +181,11 @@ const ProductList: React.FC<ProductListProps> = ({
                       {product.name}
                     </td>
                     <td className="px-4 py-3">{product.category}</td>
+                    <td className="px-4 py-3">
+                      <code className="bg-gray-100 px-2 py-1 rounded text-sm">
+                        {product.barcode}
+                      </code>
+                    </td>
                     <td className="px-4 py-3">{product.quantity}</td>
                     <td className="px-4 py-3">${product.price}</td>
                     <td className="px-4 py-3">{product.supplier}</td>
@@ -127,25 +197,43 @@ const ProductList: React.FC<ProductListProps> = ({
                         {new Date(product.expiryDate).toLocaleDateString()}
                       </div>
                     </td>
-                    <td className="px-4 py-3 flex gap-2">
-                      <ActionButton
-                        color="blue"
-                        icon={<Edit className="w-4 h-4 mr-1" />}
-                        label="Edit"
-                        onClick={() => onEdit(product)}
-                      />
-                      <ActionButton
-                        color="red"
-                        icon={<Trash2 className="w-4 h-4 mr-1" />}
-                        label="Delete"
-                        onClick={() => {
-                          if (
-                            window.confirm("Delete this product permanently?")
-                          ) {
-                            onDelete(product.id);
-                          }
-                        }}
-                      />
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1 flex-wrap">
+                        <ActionButton
+                          color="blue"
+                          icon={<Edit className="w-3 h-3" />}
+                          label="Edit"
+                          onClick={() => onEdit(product)}
+                          size="sm"
+                        />
+                        <ActionButton
+                          color="green"
+                          icon={<BarChart3 className="w-3 h-3" />}
+                          label="Barcode"
+                          onClick={() => downloadBarcode(product)}
+                          size="sm"
+                        />
+                        <ActionButton
+                          color="purple"
+                          icon={<FileText className="w-3 h-3" />}
+                          label="Ticket"
+                          onClick={() => downloadTicket(product)}
+                          size="sm"
+                        />
+                        <ActionButton
+                          color="red"
+                          icon={<Trash2 className="w-3 h-3" />}
+                          label="Delete"
+                          onClick={() => {
+                            if (
+                              window.confirm("Delete this product permanently?")
+                            ) {
+                              onDelete(product.id);
+                            }
+                          }}
+                          size="sm"
+                        />
+                      </div>
                     </td>
                   </tr>
                 );
@@ -163,23 +251,33 @@ const ActionButton = ({
   icon,
   label,
   onClick,
+  size = "md",
 }: {
-  color: "blue" | "red";
+  color: "blue" | "red" | "green" | "purple";
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
+  size?: "sm" | "md";
 }) => {
-  const colorClasses =
-    color === "blue"
-      ? "bg-blue-500 hover:bg-blue-600"
-      : "bg-red-500 hover:bg-red-600";
+  const colorClasses = {
+    blue: "bg-blue-500 hover:bg-blue-600",
+    red: "bg-red-500 hover:bg-red-600",
+    green: "bg-green-500 hover:bg-green-600",
+    purple: "bg-purple-500 hover:bg-purple-600",
+  };
+
+  const sizeClasses = {
+    sm: "px-2 py-1 text-xs",
+    md: "px-3 py-1 text-sm",
+  };
+
   return (
     <button
       onClick={onClick}
-      className={`flex-1 ${colorClasses} text-white px-3 py-1 rounded-lg transition-colors flex items-center justify-center text-sm`}
+      className={`${colorClasses[color]} ${sizeClasses[size]} text-white rounded transition-colors flex items-center justify-center gap-1`}
     >
       {icon}
-      {label}
+      <span className="hidden sm:inline">{label}</span>
     </button>
   );
 };
