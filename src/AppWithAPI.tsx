@@ -13,6 +13,7 @@ import SubStoreManagement from './components/SubStoreManagement';
 import POSSync from './components/POSSync';
 import DashboardGraphs from './components/DashboardGraphs';
 import BarcodeTicketManager from './components/BarcodeTicketManager';
+import { STORAGE_KEYS } from './constants/storageKeys';
 
 import type { Product, User } from './types/Product';
 
@@ -66,66 +67,11 @@ const AppContent: React.FC = () => {
       console.log('Logging in after registration...');
       await login(email, password);
       
-      // Create supermarket after successful login
-      console.log('Creating supermarket:', supermarketName);
+      // After login, refresh supermarkets (auto-created on backend during registration)
       try {
-        const supermarketData = {
-          name: supermarketName.trim(),
-          description: `${supermarketName.trim()} - Halal Inventory Management`,
-          address: address || 'Address not provided',
-          phone: phone || 'Phone not provided',
-          email: email,
-          is_active: true
-        };
-        
-        const createdSupermarket = await SupermarketService.createSupermarketWithDefaults(supermarketData);
-        console.log('Supermarket created successfully:', createdSupermarket);
-        
-        // Refresh supermarkets data immediately
         await refetchSupermarkets();
-        console.log('Supermarkets data refreshed after creation');
-        
-        // Create some essential default data in the background
-        // Don't let these fail the registration process
-        setTimeout(async () => {
-          try {
-            // Create default categories
-            const defaultCategories = [
-              { name: 'Meat & Poultry', description: 'Halal meat and poultry products' },
-              { name: 'Dairy', description: 'Dairy products and alternatives' },
-              { name: 'Snacks', description: 'Halal snacks and confectionery' },
-              { name: 'Other', description: 'Other miscellaneous products' }
-            ];
-            
-            for (const category of defaultCategories) {
-              try {
-                await CategoryService.createCategory(category);
-              } catch (error) {
-                console.warn(`Failed to create category ${category.name}:`, error);
-              }
-            }
-            
-            // Create default supplier
-            const defaultSupplier = {
-              name: 'Default Supplier',
-              contact_person: 'Contact Person',
-              email: email,
-              phone: '',
-              address: '',
-              is_active: true
-            };
-            
-            await SupplierService.createSupplier(defaultSupplier);
-            console.log('Background setup completed');
-          } catch (error) {
-            console.warn('Background setup failed:', error);
-          }
-        }, 1000); // Run after 1 second to not block the main flow
-        
-      } catch (supermarketError) {
-        console.error('Failed to create supermarket during registration:', supermarketError);
-        // Don't throw here - user is already registered and logged in
-        console.log('Supermarket creation failed during registration, but user can still use the system');
+      } catch (e) {
+        console.warn('Failed to refresh supermarkets after signup:', e);
       }
       
       setCurrentView('dashboard');
@@ -251,13 +197,13 @@ const AppContent: React.FC = () => {
     
     // Determine supermarket ID:
     // 1) Use explicitly provided productData.supermarketId (if any)
-    // 2) Use persisted selection from localStorage ('current_supermarket_id')
+    // 2) Use persisted selection from localStorage (STORAGE_KEYS.CURRENT_SUPERMARKET_ID)
     // 3) Fallback to the first available from fetched list
     const supermarketsArray = Array.isArray(supermarkets) ? supermarkets : Object.values(supermarkets || {});
     let supermarketId =
       // @ts-ignore - productData may be Omit<Product, 'id'>
       (productData as any).supermarketId ||
-      (typeof window !== 'undefined' ? localStorage.getItem('current_supermarket_id') : null) ||
+      (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.CURRENT_SUPERMARKET_ID) : null) ||
       supermarketsArray?.[0]?.id || null;
 
     // Log all supermarkets to aid debugging
@@ -364,7 +310,7 @@ const AppContent: React.FC = () => {
   // Debug supermarket data
   console.log('🏪 Supermarkets data:', supermarkets);
   console.log('🏪 Primary supermarket:', primarySupermarket);
-  console.log('🏪 Supermarket ID being passed:', primarySupermarket?.id?.toString() || '1');
+  console.log('🏪 Supermarket ID being passed:', primarySupermarket?.id?.toString() || '(none)');
 
   if (isLoading) {
     return (
@@ -536,7 +482,7 @@ const AppContent: React.FC = () => {
                       refetchProducts();
                     }}
                     initialProduct={editingProduct}
-                    supermarketId={primarySupermarket?.id?.toString() || '1'}
+                    supermarketId={primarySupermarket?.id?.toString() || ''}
                     onCancel={() => {
                       setCurrentView('dashboard');
                       setEditingProduct(null);

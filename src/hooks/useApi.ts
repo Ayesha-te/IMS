@@ -44,15 +44,60 @@ export const useProducts = () => {
     const raw = Array.isArray(response) ? response : response?.results || [];
 
     // Map backend fields to frontend Product shape expected by UI
+    // DEBUG: inspect raw response supermarket-related fields
+    try {
+      const sample = raw.slice(0, 3).map((p: any) => ({
+        id: p.id,
+        supermarket: p.supermarket,
+        supermarket_id: p.supermarket_id,
+        supermarket_uuid: p.supermarket_uuid,
+        supermarket_name: p.supermarket_name,
+        store: p.store,
+        store_id: p.store_id,
+        store_name: p.store_name,
+        market: p.market,
+        market_id: p.market_id,
+        market_name: p.market_name,
+      }));
+      // eslint-disable-next-line no-console
+      console.table(sample);
+      // eslint-disable-next-line no-console
+      console.log('RAW_SUPERMARKET_FIELDS_JSON', JSON.stringify(sample));
+    } catch {}
+
     const mapped = raw.map((p: any) => {
-      // Normalize supermarket ID from API: can be ID, nested object, or separate field
-      let normalizedSupermarketId = 'default';
-      if (p.supermarket && typeof p.supermarket === 'object') {
-        normalizedSupermarketId = String(p.supermarket.id ?? p.supermarket.pk ?? 'default');
-      } else if (p.supermarket != null) {
-        normalizedSupermarketId = String(p.supermarket);
-      } else if (p.supermarket_id != null) {
-        normalizedSupermarketId = String(p.supermarket_id);
+      // Normalize supermarket reference from many possible backend shapes
+      const smObj = (val: any) => (val && typeof val === 'object') ? val : null;
+      const firstTruthy = (...vals: any[]) => vals.find(v => v !== undefined && v !== null && String(v).trim() !== '');
+
+      let normalizedSupermarketRef: string = 'default';
+      const sm = firstTruthy(
+        p.supermarket, p.supermarket_id, p.supermarket_uuid,
+        p.store, p.store_id, p.store_uuid,
+        p.market, p.market_id, p.market_uuid,
+        p.supermarketRef, p.supermarket_ref,
+        // also consider parent relationships for sub-stores
+        p.supermarket_parent, p.supermarket_parent_name,
+        p.parent, p.parent_id, p.parent_uuid,
+        p.parent_name
+      );
+
+      if (smObj(sm)) {
+        const o = smObj(sm)!;
+        normalizedSupermarketRef = String(
+          firstTruthy(o.id, o.pk, o.uuid, o.uid, o.identifier, o.name) ?? 'default'
+        );
+      } else if (sm !== undefined && sm !== null) {
+        normalizedSupermarketRef = String(sm);
+      } else {
+        // Fallback to name-based fields so UI can still match by name
+        normalizedSupermarketRef = String(
+          firstTruthy(
+            p.supermarket_name, p.supermarketName,
+            p.store_name, p.storeName,
+            p.market_name, p.marketName
+          ) ?? 'default'
+        );
       }
 
       return {
@@ -65,7 +110,7 @@ export const useProducts = () => {
         supplier: String(p.supplier_name ?? p.supplier_name_display ?? p.supplier ?? ''),
         price: Number(p.selling_price ?? p.price ?? 0),
         addedDate: String(p.added_date ?? p.addedDate ?? new Date().toISOString()),
-        supermarketId: normalizedSupermarketId,
+        supermarketId: normalizedSupermarketRef,
         description: p.description ?? '',
         brand: p.brand ?? '',
         weight: p.weight ?? '',
@@ -111,11 +156,11 @@ export const useSuppliers = () => {
   }, [token]);
 };
 
-// Supermarkets hook
+// Supermarkets hook - now returns only user's supermarkets
 export const useSupermarkets = () => {
   const { token } = useAuth();
   return useApiData(async () => {
-    const response = await SupermarketService.getSupermarkets(token || undefined);
+    const response = await SupermarketService.getUserSupermarkets(token || undefined);
     // Handle paginated/object response
     if (Array.isArray(response)) return response;
     if (response.supermarkets && Array.isArray(response.supermarkets)) return response.supermarkets;

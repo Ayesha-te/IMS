@@ -56,14 +56,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(response.user);
       } else {
         // Create a basic user object from email
-        setUser({
+        const fallback = {
           id: 'temp-id',
           email: email,
           first_name: email.split('@')[0],
           last_name: '',
           is_verified: true,
           date_joined: new Date().toISOString()
-        });
+        } as any;
+        setUser(fallback);
+        // Persist for services that read current user
+        AuthService.setCurrentUser(fallback);
       }
     } catch (error) {
       console.error('Login failed:', error);

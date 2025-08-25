@@ -12,13 +12,13 @@ export const API_CONFIG = {
   // Production backend URL
   PRODUCTION_BASE_URL: 'https://inventory-backend-pfr3.onrender.com',
   
-  // Development backend URL
-  DEVELOPMENT_BASE_URL: 'http://127.0.0.1:8000',
+  // Development backend URL (point to Render as requested)
+  DEVELOPMENT_BASE_URL: 'https://inventory-backend-pfr3.onrender.com',
   
-  // Current base URL based on environment
-  BASE_URL: isProduction 
+  // Allow override via Vite env (VITE_API_BASE_URL), otherwise fallback by NODE_ENV
+  BASE_URL: (import.meta.env.VITE_API_BASE_URL as string) || (isProduction 
     ? 'https://inventory-backend-pfr3.onrender.com'
-    : 'https://inventory-backend-pfr3.onrender.com', // Always use production for now
+    : 'https://inventory-backend-pfr3.onrender.com'),
   
   // API version
   VERSION: 'v1',

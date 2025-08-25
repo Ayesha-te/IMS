@@ -1,15 +1,17 @@
 import React from 'react';
 import { Package } from 'lucide-react';
-import type { Product } from '../types/Product';
+import type { Product, Supermarket } from '../types/Product';
 import ProductList from './ProductList';
 
 interface DashboardProps {
   products: Product[];
+  supermarkets?: Supermarket[];
   onEditProduct: (product: Product) => void;
   onDeleteProduct: (id: string) => void;
+  fallbackStoreName?: string;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ products, onEditProduct, onDeleteProduct }) => {
+const Dashboard: React.FC<DashboardProps> = ({ products, supermarkets, onEditProduct, onDeleteProduct, fallbackStoreName }) => {
   return (
     <div className="space-y-8">
       {/* Inventory Overview */}
@@ -27,8 +29,10 @@ const Dashboard: React.FC<DashboardProps> = ({ products, onEditProduct, onDelete
         {/* Product List */}
         <ProductList 
           products={products} 
+          supermarkets={supermarkets}
           onEdit={onEditProduct}
           onDelete={onDeleteProduct}
+          fallbackStoreName={fallbackStoreName}
         />
       </div>
     </div>

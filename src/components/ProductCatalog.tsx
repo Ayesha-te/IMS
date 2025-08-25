@@ -40,18 +40,9 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, supermarkets 
                            String(product.barcode ?? '').includes(searchTerm);
       const matchesCategory = filterCategory === 'all' || String(product.category).trim() === filterCategory;
 
-      // Accept either ID or Store Name saved in product.supermarketId
-      const productStoreRef = String(product.supermarketId ?? '').trim();
-      const matchesSupermarket = filterSupermarket === 'all' || (
-        selectedStore && (
-          // Direct ID match
-          productStoreRef === String(selectedStore.id) ||
-          // Direct name match (if product stored the name)
-          productStoreRef.toLowerCase() === String(selectedStore.name).trim().toLowerCase() ||
-          // Name resolved from ID matches selected store name
-          getSupermarketName(productStoreRef).toLowerCase() === String(selectedStore.name).trim().toLowerCase()
-        )
-      );
+      // Simplified supermarket filtering - only show products from selected supermarket
+      const matchesSupermarket = filterSupermarket === 'all' || 
+        String(product.supermarketId) === String(filterSupermarket);
 
       return matchesSearch && matchesCategory && matchesSupermarket && (product.halalCertified ?? true);
     })
@@ -73,14 +64,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, supermarkets 
       }
     });
 
-  // Debug: how many match selected store
-  try {
-    if (filterSupermarket !== 'all') {
-      const idMatches = products.filter(p => String(p.supermarketId) === String(filterSupermarket)).length;
-      // eslint-disable-next-line no-console
-      console.log('Catalog debug — selected store:', filterSupermarket, 'ID matches:', idMatches, 'after filter:', filteredProducts.length);
-    }
-  } catch {}
+
 
   const getExpiryStatus = (expiryDate: string) => {
     const now = new Date();
@@ -221,9 +205,30 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, supermarkets 
                     </div>
 
                     {/* Supermarket Info */}
-                    <div className="flex items-center text-sm text-gray-600 mb-3">
-                      <MapPin className="w-4 h-4 mr-1" />
-                      <span>{getSupermarketName(product.supermarketId)}</span>
+                    <div className="bg-blue-50 rounded-lg p-3 mb-3">
+                      <div className="flex items-center text-sm text-blue-800 mb-1">
+                        <MapPin className="w-4 h-4 mr-1" />
+                        <span className="font-semibold">{getSupermarketName(product.supermarketId)}</span>
+                      </div>
+                      {(() => {
+                        const supermarket = supermarkets.find(s => 
+                          String(s.id) === String(product.supermarketId) ||
+                          String(s.name).trim().toLowerCase() === String(product.supermarketId).trim().toLowerCase()
+                        );
+                        return supermarket ? (
+                          <div className="text-xs text-blue-600">
+                            <div>{supermarket.address}</div>
+                            {supermarket.phone && <div>📞 {supermarket.phone}</div>}
+                            {supermarket.isSubStore && (
+                              <div className="mt-1">
+                                <span className="px-2 py-1 bg-purple-100 text-purple-600 rounded-full text-xs">
+                                  Sub-Store
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
 
                     {/* Expiry Date */}

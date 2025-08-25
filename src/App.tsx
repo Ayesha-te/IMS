@@ -1,26 +1,38 @@
 import Auth from './features/auth';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Dashboard from './components/Dashboard';
 import ProductScanner from './components/ProductScanner';
 import ProductForm from './components/ProductForm';
 import SupermarketDashboard from './components/SupermarketDashboard';
+import SupermarketDashboardView from './components/SupermarketDashboardView';
 import ProductCatalog from './components/ProductCatalog';
 import Analytics from './components/Analytics';
 import Settings from './components/Settings';
 import SubStoreManagement from './components/SubStoreManagement';
+import MultiStoreDashboard from './components/MultiStoreDashboard';
+import MultiStoreProductCatalog from './components/MultiStoreProductCatalog';
+import MultiStoreProductForm from './components/MultiStoreProductForm';
+import AdaptiveProductCatalog from './components/AdaptiveProductCatalog';
+import AdaptiveProductForm from './components/AdaptiveProductForm';
+import StoreManagement from './components/StoreManagement';
 import POSSync from './components/POSSync';
 import DashboardGraphs from './components/DashboardGraphs';
 import BarcodeTicketManager from './components/BarcodeTicketManager';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { useProducts, useCategories, useSuppliers, useSupermarkets } from './hooks/useApi';
 import { ProductService, CategoryService, SupplierService, SupermarketService, AuthService } from './services/apiService';
+import { analyzeStoreContext, getNavigationItems } from './utils/storeUtils';
+import { getCategoriesWithFallback, getSuppliersWithFallback } from './data/demoData';
+import DebugStoreInfo from './components/DebugStoreInfo';
 import type { Product, Supermarket, User } from './types/Product';
 
 
 function App() {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'scanner' | 'add-product' | 'stores' | 'catalog' | 'analytics' | 'pos-sync' | 'settings' | 'barcode-demo' | 'login' | 'signup'>('login');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'supermarket-overview' | 'scanner' | 'add-product' | 'stores' | 'catalog' | 'analytics' | 'pos-sync' | 'settings' | 'barcode-demo' | 'login' | 'signup'>('login');
   const [products, setProducts] = useState<Product[]>([]);
   const [supermarkets, setSupermarkets] = useState<Supermarket[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [suppliers, setSuppliers] = useState<string[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -144,9 +156,149 @@ function App() {
       setIsAuthenticated(false);
       setProducts([]);
       setSupermarkets([]);
+      setCategories([]);
+      setSuppliers([]);
       setCurrentView('login');
     }
   };
+
+  // Data Loading
+  const loadData = async () => {
+    if (!isAuthenticated) return;
+
+    try {
+      // Load categories
+      const categoriesResponse = await CategoryService.getCategories();
+      const categoriesData = Array.isArray(categoriesResponse) ? categoriesResponse : categoriesResponse.results || [];
+      const apiCategories = categoriesData.map((cat: any) => cat.name || cat.toString());
+      setCategories(getCategoriesWithFallback(apiCategories));
+
+      // Load suppliers
+      const suppliersResponse = await SupplierService.getSuppliers();
+      const suppliersData = Array.isArray(suppliersResponse) ? suppliersResponse : suppliersResponse.results || [];
+      const apiSuppliers = suppliersData.map((sup: any) => sup.name || sup.toString());
+      setSuppliers(getSuppliersWithFallback(apiSuppliers));
+
+      // Load products
+      const productsResponse = await ProductService.getProducts();
+      const productsData = Array.isArray(productsResponse) ? productsResponse : productsResponse.results || [];
+      
+      const mappedProducts = productsData.map((p: any) => ({
+        id: String(p.id ?? ''),
+        name: String(p.name ?? ''),
+        category: String(p.category_name ?? p.category ?? ''),
+        quantity: Number(p.quantity ?? 0),
+        expiryDate: String(p.expiry_date ?? p.expiryDate ?? ''),
+        supplier: String(p.supplier_name ?? p.supplier ?? ''),
+        price: Number(p.selling_price ?? p.price ?? 0),
+        addedDate: String(p.added_date ?? p.addedDate ?? new Date().toISOString()),
+        supermarketId: String(p.supermarket_id ?? p.supermarket ?? 'default'),
+        description: p.description ?? '',
+        brand: p.brand ?? '',
+        weight: p.weight ?? '',
+        origin: p.origin ?? '',
+        imageUrl: p.image ?? p.image_url ?? '',
+        barcode: String(p.barcode ?? ''),
+        halalCertified: (p.halal_certified ?? p.halalCertified) ?? true,
+        halalCertificationBody: p.halal_certification_body ?? p.halalCertificationBody ?? '',
+        costPrice: p.cost_price ?? undefined,
+        sellingPrice: p.selling_price ?? p.price ?? undefined,
+        minStockLevel: p.min_stock_level ?? undefined,
+        location: p.location ?? '',
+        syncedWithPOS: p.synced_with_pos ?? false,
+        posId: p.pos_id ? String(p.pos_id) : undefined,
+      }));
+      setProducts(mappedProducts);
+
+      // Load supermarkets
+      const supermarketsResponse = await SupermarketService.getSupermarkets();
+      const supermarketsData = Array.isArray(supermarketsResponse) ? supermarketsResponse : supermarketsResponse.results || [];
+      
+      console.log('🏪 Raw Supermarkets Data:', supermarketsData);
+      console.log('👤 Current User for Store Mapping:', currentUser);
+      
+      // Debug: Log store data (can be removed in production)
+      console.log(`Loaded ${supermarketsData.length} stores for user ${currentUser?.email}`);
+      
+      const mappedSupermarkets = supermarketsData.map((s: any) => {
+        // Since getUserSupermarkets() already filters by user, we can trust these stores belong to the user
+        let ownerId = s.owner_id ?? s.ownerId ?? s.owner ?? s.user_id ?? s.userId;
+        
+        // If no owner ID found, assign to current user since API filtered for user stores
+        if (!ownerId && currentUser) {
+          ownerId = currentUser.id;
+          console.log(`Store ${s.name} assigned to current user (API filtered)`);
+        }
+        
+        // Ensure ownerId is a string for consistent comparison
+        ownerId = String(ownerId || '');
+        
+        return {
+          id: String(s.id ?? ''),
+          name: String(s.name ?? ''),
+          address: String(s.address ?? ''),
+          phone: String(s.phone ?? ''),
+          email: String(s.email ?? ''),
+          registrationDate: String(s.registration_date ?? s.registrationDate ?? new Date().toISOString()).split('T')[0],
+          isVerified: Boolean(s.is_verified ?? s.isVerified ?? false),
+          logo: s.logo ?? '',
+          description: s.description ?? '',
+          parentId: s.parent_id ?? s.parentId ?? undefined,
+          isSubStore: Boolean(s.is_sub_store ?? s.isSubStore ?? false),
+          ownerId: String(ownerId || ''),
+          posSystem: {
+            enabled: Boolean(s.pos_system?.enabled ?? false),
+            type: s.pos_system?.type ?? 'none',
+            apiKey: s.pos_system?.api_key ?? undefined,
+            syncEnabled: Boolean(s.pos_system?.sync_enabled ?? false),
+            lastSync: s.pos_system?.last_sync ?? undefined,
+          }
+        };
+      });
+      
+      console.log('🏪 Mapped Supermarkets:', mappedSupermarkets);
+      
+      // Ensure user has at least one store
+      let finalSupermarkets = mappedSupermarkets;
+      const userStores = mappedSupermarkets.filter(s => s.ownerId === currentUser?.id);
+      
+      if (userStores.length === 0 && currentUser) {
+        console.log('⚠️ No stores found for user, creating default store');
+        // Create a default store for the user
+        const defaultStore: Supermarket = {
+          id: 'default-store-' + currentUser.id,
+          name: 'My Store',
+          address: 'Main Location',
+          phone: '',
+          email: currentUser.email,
+          description: 'Default store created automatically',
+          registrationDate: new Date().toISOString().split('T')[0],
+          isVerified: false,
+          ownerId: currentUser.id,
+          isSubStore: false,
+          posSystem: {
+            enabled: false,
+            type: 'none',
+            syncEnabled: false
+          }
+        };
+        finalSupermarkets = [...mappedSupermarkets, defaultStore];
+        console.log('✅ Default store created:', defaultStore);
+      }
+      
+      setSupermarkets(finalSupermarkets);
+
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    }
+  };
+
+  // Load data when authenticated
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      loadData();
+    }
+  }, [isAuthenticated]);
 
   // Product Management
   const addProduct = (product: Omit<Product, 'id'>) => {
@@ -189,6 +341,18 @@ function App() {
     } else {
       addProduct(product);
     }
+    setCurrentView('dashboard');
+    setEditingProduct(null);
+  };
+
+  // Multi-store product save
+  const handleMultiStoreSave = (product: Omit<Product, 'id'>, storeIds: string[]) => {
+    const multiStoreProducts = storeIds.map(storeId => ({
+      ...product,
+      supermarketId: storeId,
+      id: 'product-' + Date.now() + '-' + Math.random() + '-' + storeId
+    }));
+    setProducts(prev => [...prev, ...multiStoreProducts]);
     setCurrentView('dashboard');
     setEditingProduct(null);
   };
@@ -275,20 +439,47 @@ function App() {
     }
   };
 
-  const navigationItems = isAuthenticated ? [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'catalog', label: 'Products', icon: '📦' },
-    { id: 'add-product', label: 'Add Products', icon: '➕' },
-    { id: 'barcode-demo', label: 'Barcodes & Tickets', icon: '🏷️' },
-    { id: 'scanner', label: 'Scanner', icon: '📱' },
-    { id: 'stores', label: 'My Stores', icon: '🏪' },
-    { id: 'pos-sync', label: 'POS Sync', icon: '🔄' },
-    { id: 'analytics', label: 'Analytics', icon: '📈' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' }
-  ] : [
-    { id: 'login', label: 'Login', icon: '🔑' },
-    { id: 'signup', label: 'Sign Up', icon: '📝' }
-  ];
+  // Enhanced bulk actions for multi-store catalog
+  const handleMultiStoreBulkAction = (action: string, productIds: string[], targetStoreId?: string) => {
+    switch (action) {
+      case 'copy':
+        if (targetStoreId) {
+          handleBulkProductAction('copy', productIds, targetStoreId);
+        }
+        break;
+      case 'move':
+        if (targetStoreId) {
+          handleBulkProductAction('move', productIds, targetStoreId);
+        }
+        break;
+      case 'delete':
+        setProducts(prev => prev.filter(p => !productIds.includes(p.id)));
+        break;
+      default:
+        console.warn('Unknown bulk action:', action);
+    }
+  };
+
+  // Handle product duplication to multiple stores
+  const handleProductDuplication = (product: Product, storeIds: string[]) => {
+    const duplicatedProducts = storeIds.map(storeId => ({
+      ...product,
+      id: 'product-' + Date.now() + '-' + Math.random() + '-' + storeId,
+      supermarketId: storeId
+    }));
+    setProducts(prev => [...prev, ...duplicatedProducts]);
+  };
+
+  // Navigate to specific store
+  const handleNavigateToStore = (storeId: string) => {
+    // Set the store as current context and navigate to catalog
+    setCurrentView('catalog');
+    // You could also set a selected store context here if needed
+  };
+
+  // Get store context and adaptive navigation
+  const storeContext = analyzeStoreContext(supermarkets, currentUser);
+  const navigationItems = getNavigationItems(storeContext, isAuthenticated);
 
   // Get user's primary store
   const primaryStore = supermarkets.find(s => !s.isSubStore && s.ownerId === currentUser?.id) || supermarkets[0];
@@ -386,19 +577,61 @@ function App() {
             <>
               {currentView === 'dashboard' && (
                 <div className="space-y-8">
+                  <DebugStoreInfo stores={supermarkets} currentUser={currentUser} />
                   <DashboardGraphs 
                     products={products} 
                     supermarkets={supermarkets}
                   />
-                  <Dashboard 
-                    products={products} 
-                    onEditProduct={(product) => {
-                      setEditingProduct(product);
-                      setCurrentView('add-product');
-                    }}
-                    onDeleteProduct={deleteProduct}
-                  />
+                  {storeContext.isMultiStore ? (
+                    <MultiStoreDashboard 
+                      products={products}
+                      stores={supermarkets}
+                      onEditProduct={(product) => {
+                        setEditingProduct(product);
+                        setCurrentView('add-product');
+                      }}
+                      onDeleteProduct={deleteProduct}
+                      onCopyProduct={(productId, targetStoreId) => {
+                        handleBulkProductAction('copy', [productId], targetStoreId);
+                      }}
+                      onMoveProduct={(productId, targetStoreId) => {
+                        handleBulkProductAction('move', [productId], targetStoreId);
+                      }}
+                    />
+                  ) : (
+                    <Dashboard 
+                      products={products}
+                      supermarkets={supermarkets}
+                      onEditProduct={(product) => {
+                        setEditingProduct(product);
+                        setCurrentView('add-product');
+                      }}
+                      onDeleteProduct={deleteProduct}
+                      fallbackStoreName={primaryStore?.name}
+                    />
+                  )}
                 </div>
+              )}
+
+              {currentView === 'supermarket-overview' && currentUser && (
+                <SupermarketDashboardView
+                  user={currentUser}
+                  supermarkets={supermarkets}
+                  products={products}
+                  onViewSupermarket={(supermarketId) => {
+                    // Navigate to a detailed view of the supermarket
+                    console.log('View supermarket:', supermarketId);
+                    // You could add a detailed supermarket view here
+                  }}
+                  onManageSupermarket={(supermarketId) => {
+                    // Navigate to store management for this specific supermarket
+                    setCurrentView('stores');
+                  }}
+                  onCreateSupermarket={() => {
+                    // Navigate to store management to create a new supermarket
+                    setCurrentView('stores');
+                  }}
+                />
               )}
 
               {currentView === 'scanner' && (
@@ -406,47 +639,57 @@ function App() {
               )}
 
               {currentView === 'add-product' && isAuthenticated && (
-                <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-rose-200 p-8">
-                  <h2 className="text-3xl font-bold text-gray-800 mb-4">Add Products</h2>
-                  <p className="text-gray-600 mb-6">Easily add new products to your inventory using manual entry, Excel upload, or image scan. Choose the method that best fits your workflow.</p>
-                  <div className="mb-6 p-4 bg-rose-50 rounded-xl border border-rose-200">
-                    <h3 className="font-semibold text-rose-800 mb-2">How to Add Products:</h3>
-                    <ul className="list-disc ml-6 text-rose-700 text-sm space-y-1">
-                      <li><strong>Manual Entry:</strong> Add products one by one with full details.</li>
-                      <li><strong>Excel Import:</strong> Upload an Excel file to add multiple products at once.</li>
-                      <li><strong>Image Scan:</strong> Use your camera to scan product labels and auto-fill details.</li>
-                    </ul>
-                  </div>
-                  <ProductForm 
+                <div className="space-y-4">
+                  <DebugStoreInfo stores={supermarkets} currentUser={currentUser} />
+                  <AdaptiveProductForm
+                    product={editingProduct}
+                    stores={supermarkets}
+                    categories={categories}
+                    suppliers={suppliers}
+                    currentUser={currentUser}
                     onSave={handleProductSave}
-                    onBulkSave={addBulkProducts}
-                    initialProduct={editingProduct}
-                    supermarketId={primaryStore ? primaryStore.id : supermarkets[0]?.id || 'default'}
                     onCancel={() => {
                       setCurrentView('dashboard');
                       setEditingProduct(null);
                     }}
+                    onDuplicateToStores={handleProductDuplication}
+                    onMultiStoreSave={handleMultiStoreSave}
                   />
                 </div>
               )}
 
               {currentView === 'catalog' && (
-                <ProductCatalog 
+                <AdaptiveProductCatalog
                   products={products}
-                  supermarkets={supermarkets}
+                  stores={supermarkets}
+                  currentUser={currentUser}
+                  onEditProduct={(product) => {
+                    setEditingProduct(product);
+                    setCurrentView('add-product');
+                  }}
+                  onDeleteProduct={deleteProduct}
+                  onCopyProduct={(productId, targetStoreId) => {
+                    handleBulkProductAction('copy', [productId], targetStoreId);
+                  }}
+                  onMoveProduct={(productId, targetStoreId) => {
+                    handleBulkProductAction('move', [productId], targetStoreId);
+                  }}
+                  onBulkAction={handleMultiStoreBulkAction}
                 />
               )}
 
               {currentView === 'stores' && currentUser && (
-                <SubStoreManagement 
-                  supermarkets={supermarkets}
-                  products={products}
-                  currentUser={currentUser}
-                  onAddSupermarket={addSupermarket}
-                  onUpdateSupermarket={updateSupermarket}
-                  onDeleteSupermarket={deleteSupermarket}
-                  onBulkProductAction={handleBulkProductAction}
-                />
+                <div className="space-y-4">
+                  <DebugStoreInfo stores={supermarkets} currentUser={currentUser} />
+                  <StoreManagement 
+                    stores={supermarkets}
+                    products={products}
+                    currentUser={currentUser}
+                    onAddStore={addSupermarket}
+                    onNavigateToStore={handleNavigateToStore}
+                    onEditStore={updateSupermarket}
+                  />
+                </div>
               )}
 
               {currentView === 'pos-sync' && isAuthenticated && (

@@ -15,6 +15,10 @@ interface ImageImportProps {
   supermarketId: string;
 }
 
+
+
+
+
 interface ExtractedData {
   name?: string;
   brand?: string;
@@ -64,33 +68,33 @@ const ImageImport: React.FC<ImageImportProps> = ({ onProductExtracted, onCancel,
     reader.readAsDataURL(file);
 
     try {
-      // Simulate AI processing time
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Use the image-to-text service to extract fields
+      const { extractTextFromImage } = await import('../services/imageToText');
+      const result = await extractTextFromImage(file);
 
-      // Mock extracted data - In real implementation, call image-to-text API
-      const mockExtractedData: ExtractedData = {
-        name: 'Premium Organic Honey',
-        brand: 'Nature\'s Best',
-        weight: '500g',
-        price: 15.99,
-        barcode: '789012345678',
-        expiryDate: '2025-06-15',
-        category: 'Condiments',
-        confidence: 0.85
+      const normalized: ExtractedData = {
+        name: result.name,
+        brand: result.brand,
+        weight: result.weight,
+        price: result.price,
+        barcode: result.barcode,
+        expiryDate: result.expiryDate,
+        category: result.category,
+        confidence: result.confidence,
       };
 
-      setExtractedData(mockExtractedData);
+      setExtractedData(normalized);
       
       // Initialize editing form with extracted data
       setEditingProduct({
-        name: mockExtractedData.name,
-        brand: mockExtractedData.brand,
-        weight: mockExtractedData.weight,
-        price: mockExtractedData.price,
-        sellingPrice: mockExtractedData.price,
-        barcode: mockExtractedData.barcode,
-        expiryDate: mockExtractedData.expiryDate,
-        category: mockExtractedData.category,
+        name: normalized.name,
+        brand: normalized.brand,
+        weight: normalized.weight,
+        price: normalized.price,
+        sellingPrice: normalized.price,
+        barcode: normalized.barcode,
+        expiryDate: normalized.expiryDate,
+        category: normalized.category,
         addedDate: new Date().toISOString().split('T')[0],
         supermarketId,
         halalCertified: true,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Store, Plus, Edit3, Trash2, MapPin, Phone, Mail, Users, Settings, CheckCircle } from 'lucide-react';
+import { Store, Plus, Edit3, Trash2, MapPin, Phone, Mail, Users, Settings, CheckCircle, ExternalLink, Eye, BarChart3 } from 'lucide-react';
 import type { Supermarket, Product } from '../types/Product';
 
 interface SubStoreManagementProps {
@@ -10,6 +10,8 @@ interface SubStoreManagementProps {
   onUpdateSupermarket: (supermarket: Supermarket) => void;
   onDeleteSupermarket: (id: string) => void;
   onBulkProductAction: (action: 'copy' | 'move', productIds: string[], targetStoreId: string) => void;
+  onGoToStore?: (storeId: string) => void;
+  onViewStoreAnalytics?: (storeId: string) => void;
 }
 
 const SubStoreManagement: React.FC<SubStoreManagementProps> = ({
@@ -19,7 +21,9 @@ const SubStoreManagement: React.FC<SubStoreManagementProps> = ({
   onAddSupermarket,
   onUpdateSupermarket,
   onDeleteSupermarket,
-  onBulkProductAction
+  onBulkProductAction,
+  onGoToStore,
+  onViewStoreAnalytics
 }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingStore, setEditingStore] = useState<Supermarket | null>(null);
@@ -266,13 +270,16 @@ const SubStoreManagement: React.FC<SubStoreManagementProps> = ({
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-gray-200">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center mb-3">
                     <div>
                       <p className="text-sm font-medium text-gray-800">
                         {storeProducts.length} Products
                       </p>
                       <p className="text-xs text-gray-500">
                         Total value: ${storeProducts.reduce((sum, p) => sum + (p.price * p.quantity), 0).toFixed(2)}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Low stock: {storeProducts.filter(p => p.quantity <= 5).length} items
                       </p>
                     </div>
                     
@@ -282,6 +289,38 @@ const SubStoreManagement: React.FC<SubStoreManagementProps> = ({
                         POS Connected
                       </div>
                     )}
+                  </div>
+
+                  {/* Store Action Buttons */}
+                  <div className="flex space-x-2">
+                    {onGoToStore && (
+                      <button
+                        onClick={() => onGoToStore(store.id)}
+                        className="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded-lg font-medium flex items-center justify-center transition-colors"
+                      >
+                        <ExternalLink className="w-3 h-3 mr-1" />
+                        Go to Store
+                      </button>
+                    )}
+                    {onViewStoreAnalytics && (
+                      <button
+                        onClick={() => onViewStoreAnalytics(store.id)}
+                        className="flex-1 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-xs rounded-lg font-medium flex items-center justify-center transition-colors"
+                      >
+                        <BarChart3 className="w-3 h-3 mr-1" />
+                        Analytics
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        // Show store details in a modal or expand card
+                        alert(`Store Details:\n\nName: ${store.name}\nAddress: ${store.address}\nPhone: ${store.phone}\nEmail: ${store.email}\nDescription: ${store.description || 'No description'}\nRegistered: ${store.registrationDate}\nVerified: ${store.isVerified ? 'Yes' : 'No'}`);
+                      }}
+                      className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white text-xs rounded-lg font-medium flex items-center justify-center transition-colors"
+                    >
+                      <Eye className="w-3 h-3 mr-1" />
+                      Details
+                    </button>
                   </div>
                 </div>
               </div>

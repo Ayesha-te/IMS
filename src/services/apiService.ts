@@ -96,6 +96,7 @@ interface RequestConfig {
   headers?: Record<string, string>;
   body?: any;
   token?: string;
+  useAuth?: boolean; // when false, do not attach any Authorization header
 }
 
 // Generic API request function
@@ -104,63 +105,84 @@ export const apiRequest = async (url: string, config: RequestConfig = {}) => {
     method = 'GET',
     headers = {},
     body,
-    token
+    token,
+    useAuth = true,
   } = config;
 
-  const requestHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...headers,
+  // Prefer explicit token, otherwise fall back to stored token, unless useAuth is false
+  const effectiveToken = useAuth ? (token || AuthService.getToken() || undefined) : undefined;
+
+  const buildHeaders = (authToken?: string): Record<string, string> => {
+    const h: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...headers,
+    };
+    if (useAuth && authToken) {
+      h['Authorization'] = `Bearer ${authToken}`;
+    }
+    return h;
   };
 
-  // Add authorization header if token is provided
-  if (token) {
-    requestHeaders['Authorization'] = `Bearer ${token}`;
-  }
-
-  const requestConfig: RequestInit = {
-    method,
-    headers: requestHeaders,
+  const buildRequest = (authToken?: string): RequestInit => {
+    const requestConfig: RequestInit = {
+      method,
+      headers: buildHeaders(authToken),
+    };
+    if (body && method !== 'GET') {
+      requestConfig.body = JSON.stringify(body);
+    }
+    return requestConfig;
   };
 
-  // Add body for non-GET requests
-  if (body && method !== 'GET') {
-    requestConfig.body = JSON.stringify(body);
-  }
-
-  try {
-    console.log('Making API request:', { url, method, headers: requestHeaders, body: body ? JSON.stringify(body) : undefined });
-    const response = await fetch(url, requestConfig);
-    
-    // Handle different response types
+  const parseResponse = async (response: Response) => {
     const contentType = response.headers.get('content-type');
-    
+
     if (contentType && contentType.includes('application/json')) {
       const data = await response.json();
-      
       if (!response.ok) {
         console.error('API Error Response:', data);
         const errorMessage = data.message || data.detail || JSON.stringify(data) || `HTTP error! status: ${response.status}`;
         throw new Error(errorMessage);
       }
-      
       return data;
     } else if (contentType && (contentType.includes('application/pdf') || contentType.includes('image/'))) {
-      // Handle binary data (PDFs, images)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       return response.blob();
     } else {
-      // Handle text responses
       const text = await response.text();
-      
       if (!response.ok) {
         throw new Error(text || `HTTP error! status: ${response.status}`);
       }
-      
       return text;
     }
-  
+  };
+
+  try {
+    const firstConfig = buildRequest(effectiveToken);
+    console.log('Making API request:', { url, method, headers: firstConfig.headers, body: body ? JSON.stringify(body) : undefined });
+
+    let response = await fetch(url, firstConfig);
+
+    // If unauthorized, attempt one refresh + retry (only for authenticated requests)
+    if (useAuth && response.status === 401) {
+      console.warn('⚠️ Unauthorized (401). Attempting refresh token...');
+      try {
+        await AuthService.refreshToken();
+        const refreshedToken = AuthService.getToken() || undefined;
+        const retryConfig = buildRequest(refreshedToken);
+        response = await fetch(url, retryConfig);
+        if (response.status === 401) {
+          throw new Error('Unauthorized');
+        }
+      } catch (e) {
+        console.error('Token refresh failed:', e);
+        throw new Error('Unauthorized');
+      }
+    }
+
+    return await parseResponse(response);
   } catch (error) {
     console.error('API request failed:', error);
     throw error;
@@ -168,9 +190,10 @@ export const apiRequest = async (url: string, config: RequestConfig = {}) => {
 };
 
 // Authentication service
+import { STORAGE_KEYS } from '../constants/storageKeys';
 export class AuthService {
-  private static tokenKey = 'auth_token';
-  private static refreshTokenKey = 'refresh_token';
+  private static tokenKey = STORAGE_KEYS.ACCESS_TOKEN;
+  private static refreshTokenKey = STORAGE_KEYS.REFRESH_TOKEN;
 
   static getToken(): string | null {
     return localStorage.getItem(this.tokenKey);
@@ -193,6 +216,26 @@ export class AuthService {
     localStorage.removeItem(this.refreshTokenKey);
   }
 
+  // Persist and access the current user profile for convenience
+  static getCurrentUser<T = any>(): T | null {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.USER_INFO);
+      return raw ? (JSON.parse(raw) as T) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  static setCurrentUser(user: any): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.USER_INFO, JSON.stringify(user));
+    } catch {}
+  }
+
+  static clearCurrentUser(): void {
+    localStorage.removeItem(STORAGE_KEYS.USER_INFO);
+  }
+
   static async login(email: string, password: string) {
     console.log('Login request:', { email, password: '***', endpoint: API_ENDPOINTS.ACCOUNTS.LOGIN });
     
@@ -201,7 +244,8 @@ export class AuthService {
       body: {
         email,
         password
-      }
+      },
+      useAuth: false, // ensure no Authorization header on public login
     });
 
     console.log('Login response received:', response);
@@ -216,11 +260,11 @@ export class AuthService {
       if (refreshToken) this.setRefreshToken(refreshToken);
     } else {
       console.warn('No tokens found in login response:', response);
+    }
 
-
-      
-      
-      
+    // Persist user profile if provided
+    if (response.user) {
+      this.setCurrentUser(response.user);
     }
 
     return response;
@@ -229,7 +273,8 @@ export class AuthService {
   static async register(userData: any) {
     return apiRequest(API_ENDPOINTS.ACCOUNTS.REGISTER, {
       method: HTTP_METHODS.POST,
-      body: userData
+      body: userData,
+      useAuth: false, // ensure no Authorization header on public register
     });
   }
 
@@ -259,6 +304,7 @@ export class AuthService {
 
   static async logout() {
     this.clearTokens();
+    this.clearCurrentUser();
   }
 }
 
@@ -445,7 +491,16 @@ export class SupermarketService {
     });
   }
 
-  static async createSupermarket(supermarketData: SupermarketCreateData, token?: string) {
+  /**
+   * Get supermarkets for the current user
+   * Backend already filters by authenticated user, so we just call getSupermarkets
+   */
+  static async getUserSupermarkets(token?: string) {
+    // Backend already filters by owner=request.user, so no additional filtering needed
+    return this.getSupermarkets(token);
+  }
+
+  static async createSupermarket(supermarketData: SupermarketCreateData & { parent?: string }, token?: string) {
     // Validate required fields
     if (!supermarketData.name || !supermarketData.address || !supermarketData.phone) {
       throw new Error('Supermarket creation requires name, address, and phone fields');
@@ -453,12 +508,15 @@ export class SupermarketService {
 
     console.log('Creating supermarket with data:', supermarketData);
 
+    // Get current user info to set proper ownership
+    const currentUser = AuthService.getCurrentUser();
+    
     // Prepare the request body with all provided fields
     const requestBody: any = {
       name: supermarketData.name.trim(),
       address: supermarketData.address.trim(),
       phone: supermarketData.phone.trim(),
-      email: supermarketData.email || 'noemail@example.com', // Required field
+      email: supermarketData.email || currentUser?.email || 'noemail@example.com', // Use current user's email
     };
 
     // Add optional fields if provided
@@ -467,6 +525,7 @@ export class SupermarketService {
     if (supermarketData.business_license) requestBody.business_license = supermarketData.business_license;
     if (supermarketData.tax_id) requestBody.tax_id = supermarketData.tax_id;
     if (supermarketData.is_sub_store !== undefined) requestBody.is_sub_store = supermarketData.is_sub_store;
+    if (supermarketData.parent) requestBody.parent = supermarketData.parent; // ensure sub-store parent is sent
     if (supermarketData.timezone) requestBody.timezone = supermarketData.timezone;
     if (supermarketData.currency) requestBody.currency = supermarketData.currency;
 
@@ -475,6 +534,28 @@ export class SupermarketService {
       body: requestBody,
       token: token || AuthService.getToken() || undefined
     });
+  }
+
+  /**
+   * Create a sub-store under a parent store
+   * Ensures same email/user can have multiple stores
+   */
+  static async createSubStore(subStoreData: SupermarketCreateData & { parentId: string }, token?: string) {
+    const currentUser = AuthService.getCurrentUser();
+    
+    if (!subStoreData.parentId) {
+      throw new Error('Parent store ID is required for sub-store creation');
+    }
+
+    // Create sub-store with parent relationship
+    const subStorePayload = {
+      ...subStoreData,
+      is_sub_store: true,
+      parent: subStoreData.parentId,
+      email: subStoreData.email || currentUser?.email || 'noemail@example.com'
+    };
+
+    return this.createSupermarket(subStorePayload, token);
   }
 
   static async getSupermarketStats(token?: string) {

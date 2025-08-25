@@ -9,21 +9,26 @@ import {
   BarChart3,
   FileText,
   Download,
+  MapPin,
 } from "lucide-react";
-import type { Product } from "../types/Product";
+import type { Product, Supermarket } from "../types/Product";
 import BarcodeTicketManager from "./BarcodeTicketManager";
 import barcodeService from "../services/barcodeService";
 
 interface ProductListProps {
   products: Product[];
+  supermarkets?: Supermarket[];
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
+  fallbackStoreName?: string; // used when resolution fails
 }
 
 const ProductList: React.FC<ProductListProps> = ({
   products,
+  supermarkets = [],
   onEdit,
   onDelete,
+  fallbackStoreName,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
@@ -34,6 +39,30 @@ const ProductList: React.FC<ProductListProps> = ({
     "all",
     ...Array.from(new Set(products.map((p) => p.category).filter(c => !!c && String(c).trim() !== "")))
   ] as string[];
+
+  // Helper function to get supermarket name and details
+  const getSupermarketInfo = (supermarketId: string) => {
+    if (!supermarketId) return { name: 'Unknown Store', address: '', isSubStore: false };
+    
+    // Try by ID first
+    const byId = supermarkets.find(s => String(s.id) === String(supermarketId));
+    if (byId) return { name: byId.name, address: byId.address, isSubStore: byId.isSubStore || false };
+    
+    // Then try by name (handles older data where supermarketId stored the name)
+    const byName = supermarkets.find(
+      s => String(s.name).trim().toLowerCase() === String(supermarketId).trim().toLowerCase()
+    );
+    if (byName) return { name: byName.name, address: byName.address, isSubStore: byName.isSubStore || false };
+
+    // Then try by address (handles cases where supermarketId stored the address/location)
+    const byAddress = supermarkets.find(
+      s => String(s.address || '').trim().toLowerCase() === String(supermarketId).trim().toLowerCase()
+    );
+    if (byAddress) return { name: byAddress.name, address: byAddress.address, isSubStore: byAddress.isSubStore || false };
+    
+    // Final fallback: use provided fallback name (e.g., navbar primary store) or generic label
+    return { name: fallbackStoreName || 'Unknown Store', address: '', isSubStore: false };
+  };
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
@@ -161,6 +190,7 @@ const ProductList: React.FC<ProductListProps> = ({
               <tr className="bg-gray-100 text-left">
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Category</th>
+                <th className="px-4 py-3">Supermarket</th>
                 <th className="px-4 py-3">Barcode</th>
                 <th className="px-4 py-3">Quantity</th>
                 <th className="px-4 py-3">Price</th>
@@ -172,6 +202,7 @@ const ProductList: React.FC<ProductListProps> = ({
             <tbody>
               {filteredProducts.map((product) => {
                 const status = getExpiryStatus(product.expiryDate);
+                const supermarketInfo = getSupermarketInfo(product.supermarketId);
                 return (
                   <tr
                     key={product.id}
@@ -181,6 +212,28 @@ const ProductList: React.FC<ProductListProps> = ({
                       {product.name}
                     </td>
                     <td className="px-4 py-3">{product.category}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-start">
+                        <div className="flex items-center text-sm">
+                          <MapPin className="w-4 h-4 text-blue-600 mr-1 flex-shrink-0" />
+                          <div>
+                            <div className="font-medium text-blue-800">
+                              {supermarketInfo.name}
+                              {supermarketInfo.isSubStore && (
+                                <span className="ml-1 px-1 py-0.5 bg-purple-100 text-purple-600 text-xs rounded">
+                                  Sub
+                                </span>
+                              )}
+                            </div>
+                            {supermarketInfo.address && (
+                              <div className="text-xs text-gray-500 truncate max-w-32">
+                                {supermarketInfo.address}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <code className="bg-gray-100 px-2 py-1 rounded text-sm">
                         {product.barcode}

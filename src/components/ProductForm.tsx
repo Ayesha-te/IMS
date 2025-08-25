@@ -1,19 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Save, X, Package, FileSpreadsheet, Camera, Plus } from 'lucide-react';
-import type { Product } from '../types/Product';
+import { Save, X, Package, FileSpreadsheet, Camera, Plus, Store } from 'lucide-react';
+import type { Product, Supermarket } from '../types/Product';
 import ExcelUpload from './ExcelUpload';
 import ImageImport from './ImageImport';
 
 interface ProductFormProps {
   onSave: (product: Product | Omit<Product, 'id'>) => void;
   onBulkSave?: (products: Omit<Product, 'id'>[]) => void;
+  onMultiStoreSave?: (product: Omit<Product, 'id'>, storeIds: string[]) => void;
   initialProduct?: Product | null;
   onCancel: () => void;
   supermarketId: string;
+  userStores?: Supermarket[];
 }
 
-const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, initialProduct, onCancel, supermarketId }) => {
+const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiStoreSave, initialProduct, onCancel, supermarketId, userStores = [] }) => {
   const [currentView, setCurrentView] = useState<'options' | 'manual' | 'excel' | 'image'>('options');
+  const [addToAllStores, setAddToAllStores] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -98,7 +101,14 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, initialPr
         // Ensure display price defaults to selling price if not set
         price: formData.price || formData.sellingPrice
       };
-      onSave(productData);
+      
+      // Check if user wants to add to all stores
+      if (addToAllStores && userStores.length > 1 && onMultiStoreSave) {
+        const allStoreIds = userStores.map(store => store.id);
+        onMultiStoreSave(productData, allStoreIds);
+      } else {
+        onSave(productData);
+      }
     }
   };
 
@@ -525,6 +535,32 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, initialPr
               />
             </div>
           </div>
+
+          {/* Multi-Store Option */}
+          {!initialProduct && userStores.length > 1 && (
+            <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+              <div className="flex items-center">
+                <Store className="w-5 h-5 text-blue-600 mr-2" />
+                <h3 className="font-semibold text-blue-800 mb-2">Multi-Store Options</h3>
+              </div>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={addToAllStores}
+                  onChange={(e) => setAddToAllStores(e.target.checked)}
+                  className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Add this product to all my stores ({userStores.length} stores)
+                </span>
+              </label>
+              {addToAllStores && (
+                <div className="mt-2 text-xs text-blue-600">
+                  Product will be added to: {userStores.map(store => store.name).join(', ')}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
