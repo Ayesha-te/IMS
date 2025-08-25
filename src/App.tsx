@@ -14,7 +14,7 @@ import MultiStoreProductCatalog from './components/MultiStoreProductCatalog';
 import MultiStoreProductForm from './components/MultiStoreProductForm';
 import AdaptiveProductCatalog from './components/AdaptiveProductCatalog';
 import AdaptiveProductForm from './components/AdaptiveProductForm';
-import StoreManagement from './components/StoreManagement';
+import MyStores from './components/MyStores';
 import POSSync from './components/POSSync';
 import DashboardGraphs from './components/DashboardGraphs';
 import BarcodeTicketManager from './components/BarcodeTicketManager';
@@ -263,27 +263,38 @@ function App() {
       const userStores = mappedSupermarkets.filter(s => s.ownerId === currentUser?.id);
       
       if (userStores.length === 0 && currentUser) {
-        console.log('⚠️ No stores found for user, creating default store');
-        // Create a default store for the user
-        const defaultStore: Supermarket = {
-          id: 'default-store-' + currentUser.id,
-          name: 'My Store',
-          address: 'Main Location',
-          phone: '',
-          email: currentUser.email,
-          description: 'Default store created automatically',
-          registrationDate: new Date().toISOString().split('T')[0],
-          isVerified: false,
-          ownerId: currentUser.id,
-          isSubStore: false,
-          posSystem: {
-            enabled: false,
-            type: 'none',
-            syncEnabled: false
-          }
-        };
-        finalSupermarkets = [...mappedSupermarkets, defaultStore];
-        console.log('✅ Default store created:', defaultStore);
+        console.log('⚠️ No stores found for user, creating default store via API');
+        try {
+          const createdSupermarket = await SupermarketService.createSupermarketWithDefaults({
+            name: 'My First Store',
+            address: 'Default Address',
+            phone: 'N/A',
+            email: currentUser.email,
+            description: 'Default store created automatically for new user.'
+          });
+
+          const newStore: Supermarket = {
+            id: createdSupermarket.id,
+            name: createdSupermarket.name,
+            address: createdSupermarket.address,
+            phone: createdSupermarket.phone,
+            email: createdSupermarket.email,
+            description: createdSupermarket.description,
+            registrationDate: createdSupermarket.registration_date?.split('T')[0] || new Date().toISOString().split('T')[0],
+            isVerified: createdSupermarket.is_verified || false,
+            ownerId: currentUser.id,
+            isSubStore: false,
+            posSystem: {
+              enabled: false,
+              type: 'none',
+              syncEnabled: false
+            }
+          };
+          finalSupermarkets = [...mappedSupermarkets, newStore];
+          console.log('✅ Default store created via API:', newStore);
+        } catch (error) {
+          console.error('Failed to create default store via API:', error);
+        }
       }
       
       setSupermarkets(finalSupermarkets);
@@ -679,17 +690,7 @@ function App() {
               )}
 
               {currentView === 'stores' && currentUser && (
-                <div className="space-y-4">
-                  <DebugStoreInfo stores={supermarkets} currentUser={currentUser} />
-                  <StoreManagement 
-                    stores={supermarkets}
-                    products={products}
-                    currentUser={currentUser}
-                    onAddStore={addSupermarket}
-                    onNavigateToStore={handleNavigateToStore}
-                    onEditStore={updateSupermarket}
-                  />
-                </div>
+                <MyStores stores={supermarkets} onNavigateToStore={handleNavigateToStore} />
               )}
 
               {currentView === 'pos-sync' && isAuthenticated && (

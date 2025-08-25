@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Download, Info, Plus } from 'lucide-react';
-import type { Product, UploadSessionType } from '../types/Product';
+import type { Product, UploadSessionType, Supermarket } from '../types/Product';
 import { 
   generateExcelTemplate, 
   generateFieldGuide, 
@@ -244,14 +244,15 @@ const ExcelUpload: React.FC<ExcelUploadProps> = ({ onProductsExtracted, onCancel
         error
       });
       
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process Excel file. Please ensure it follows the required format.';
+      console.error('❌ Setting error message:', errorMessage);
+
       setUploadSession(prev => prev ? {
         ...prev,
         status: 'error',
-        error: 'Failed to process Excel file. Please check the format and try again.'
+        error: errorMessage
       } : null);
-      
-      const errorMessage = error instanceof Error ? error.message : 'Failed to process Excel file. Please ensure it follows the required format.';
-      console.error('❌ Setting error message:', errorMessage);
+
       setErrors([errorMessage]);
     }
   };

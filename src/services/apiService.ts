@@ -137,12 +137,46 @@ export const apiRequest = async (url: string, config: RequestConfig = {}) => {
   const parseResponse = async (response: Response) => {
     const contentType = response.headers.get('content-type');
 
+    // Helper to flatten DRF-style error objects into readable strings
+    const formatError = (data: any): string => {
+      if (!data) return `HTTP error! status: ${response.status}`;
+
+      // String/array straight from server
+      if (typeof data === 'string') return data;
+      if (Array.isArray(data)) return data.join(', ');
+
+      // Common fields first
+      const primary = (data.message || data.detail || data.error);
+      const nonField = Array.isArray(data?.non_field_errors)
+        ? data.non_field_errors.join(', ')
+        : data?.non_field_errors;
+
+      // Field-specific validation errors (e.g., { password: ["Too short"] })
+      const fieldLines: string[] = [];
+      for (const key of Object.keys(data)) {
+        if (['message', 'detail', 'error', 'non_field_errors'].includes(key)) continue;
+        const val = (data as any)[key];
+        if (val === null || val === undefined) continue;
+        const values = Array.isArray(val) ? val : [val];
+        const msg = values
+          .map(v => typeof v === 'string' ? v : (typeof v === 'object' ? JSON.stringify(v) : String(v)))
+          .join(', ');
+        const label = key.replace(/_/g, ' ');
+        if (msg) fieldLines.push(`${label}: ${msg}`);
+      }
+
+      const pieces = [primary, nonField, ...fieldLines].filter(Boolean) as string[];
+      if (pieces.length) return pieces.join(' | ');
+
+      // Fallback
+      try { return JSON.stringify(data); } catch { return `HTTP error! status: ${response.status}`; }
+    };
+
     if (contentType && contentType.includes('application/json')) {
       const data = await response.json();
       if (!response.ok) {
         console.error('API Error Response:', data);
-        const errorMessage = data.message || data.detail || JSON.stringify(data) || `HTTP error! status: ${response.status}`;
-        throw new Error(errorMessage);
+        throw new Error(formatError(data));
       }
       return data;
     } else if (contentType && (contentType.includes('application/pdf') || contentType.includes('image/'))) {
@@ -394,56 +428,26 @@ export class ProductService {
             index: i,
             product: products[i],
             result,
-            success: true
+            success: true,
           });
-          console.log(`Successfully created product ${i + 1}/${convertedProducts.length}: ${products[i].name}`);
         } catch (error) {
-          const errorInfo = {
+          console.error(`Error creating product at index ${i}:`, { product: products[i], error });
+          errors.push({
             index: i,
             product: products[i],
-            error: error instanceof Error ? error.message : 'Unknown error',
-            success: false
-          };
-          errors.push(errorInfo);
-          results.push(errorInfo);
-          console.error(`Failed to create product ${i + 1}/${convertedProducts.length}: ${products[i].name}`, error);
+            error,
+          });
         }
       }
       
-      const successCount = results.filter(r => r.success).length;
-      const errorCount = errors.length;
-      
-      console.log(`Bulk creation completed: ${successCount} successful, ${errorCount} failed`);
+      console.log('Bulk creation finished.');
       
       return {
-        total: products.length,
-        successful: successCount,
-        failed: errorCount,
-        results,
-        errors
+        success: results,
+        errors: errors,
       };
     } catch (error) {
-      console.error('Bulk product creation failed:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Update a product with name-based references (converts names to IDs automatically)
-   */
-  static async updateProductWithNames(productId: string, productData: ProductWithNames, token?: string) {
-    try {
-      console.log('Updating product with names:', { productId, productData });
-      
-      // Convert names to IDs
-      const convertedProduct = await MappingService.convertProductNamesToIds(productData, token);
-      
-      console.log('Converted product data for update:', convertedProduct);
-      
-      // Update the product with IDs
-      return await this.updateProduct(productId, convertedProduct, token);
-    } catch (error) {
-      console.error('Failed to update product with names:', error);
+      console.error('Failed to bulk create products with names:', error);
       throw error;
     }
   }
@@ -491,98 +495,39 @@ export class SupermarketService {
     });
   }
 
-  /**
-   * Get supermarkets for the current user
-   * Backend already filters by authenticated user, so we just call getSupermarkets
-   */
-  static async getUserSupermarkets(token?: string) {
-    // Backend already filters by owner=request.user, so no additional filtering needed
-    return this.getSupermarkets(token);
+  static async getSupermarketById(supermarketId: string, token?: string) {
+    return apiRequest(API_ENDPOINTS.SUPERMARKETS.DETAIL(supermarketId), {
+      token: token || AuthService.getToken() || undefined
+    });
   }
 
-  static async createSupermarket(supermarketData: SupermarketCreateData & { parent?: string }, token?: string) {
-    // Validate required fields
-    if (!supermarketData.name || !supermarketData.address || !supermarketData.phone) {
-      throw new Error('Supermarket creation requires name, address, and phone fields');
-    }
+  static async createSupermarket(supermarketData: any, token?: string) {
+    return apiRequest(API_ENDPOINTS.SUPERMARKETS.LIST_CREATE, {
+      method: HTTP_METHODS.POST,
+      body: supermarketData,
+      token: token || AuthService.getToken() || undefined
+    });
+  }
 
-    console.log('Creating supermarket with data:', supermarketData);
-
-    // Get current user info to set proper ownership
-    const currentUser = AuthService.getCurrentUser();
+  /**
+   * Create a supermarket with default settings for new users.
+   * This can be a simplified version of the full create method.
+   */
+  static async createSupermarketWithDefaults(supermarketData: { name: string; address: string; phone: string; email: string; description: string; }, token?: string) {
     
-    // Prepare the request body with all provided fields
-    const requestBody: any = {
-      name: supermarketData.name.trim(),
-      address: supermarketData.address.trim(),
-      phone: supermarketData.phone.trim(),
-      email: supermarketData.email || currentUser?.email || 'noemail@example.com', // Use current user's email
+    const payload = {
+      ...supermarketData,
+      is_sub_store: false,
+      is_verified: false, // Default to not verified
     };
 
-    // Add optional fields if provided
-    if (supermarketData.description) requestBody.description = supermarketData.description;
-    if (supermarketData.website) requestBody.website = supermarketData.website;
-    if (supermarketData.business_license) requestBody.business_license = supermarketData.business_license;
-    if (supermarketData.tax_id) requestBody.tax_id = supermarketData.tax_id;
-    if (supermarketData.is_sub_store !== undefined) requestBody.is_sub_store = supermarketData.is_sub_store;
-    if (supermarketData.parent) requestBody.parent = supermarketData.parent; // ensure sub-store parent is sent
-    if (supermarketData.timezone) requestBody.timezone = supermarketData.timezone;
-    if (supermarketData.currency) requestBody.currency = supermarketData.currency;
+    console.log("Creating supermarket with defaults, payload:", payload);
 
     return apiRequest(API_ENDPOINTS.SUPERMARKETS.LIST_CREATE, {
       method: HTTP_METHODS.POST,
-      body: requestBody,
+      body: payload,
       token: token || AuthService.getToken() || undefined
     });
-  }
-
-  /**
-   * Create a sub-store under a parent store
-   * Ensures same email/user can have multiple stores
-   */
-  static async createSubStore(subStoreData: SupermarketCreateData & { parentId: string }, token?: string) {
-    const currentUser = AuthService.getCurrentUser();
-    
-    if (!subStoreData.parentId) {
-      throw new Error('Parent store ID is required for sub-store creation');
-    }
-
-    // Create sub-store with parent relationship
-    const subStorePayload = {
-      ...subStoreData,
-      is_sub_store: true,
-      parent: subStoreData.parentId,
-      email: subStoreData.email || currentUser?.email || 'noemail@example.com'
-    };
-
-    return this.createSupermarket(subStorePayload, token);
-  }
-
-  static async getSupermarketStats(token?: string) {
-    return apiRequest(API_ENDPOINTS.SUPERMARKETS.STATS, {
-      token: token || AuthService.getToken() || undefined
-    });
-  }
-
-  /**
-   * Debug method to test authentication and API connectivity
-   */
-  static async testConnection(token?: string) {
-    const authToken = token || AuthService.getToken();
-    console.log('Testing supermarket API connection...');
-    console.log('Token available:', !!authToken);
-    console.log('Token preview:', authToken ? authToken.substring(0, 20) + '...' : 'No token');
-    
-    try {
-      const result = await apiRequest(API_ENDPOINTS.SUPERMARKETS.LIST_CREATE, {
-        token: authToken || undefined
-      });
-      console.log('✅ Supermarket API connection successful:', result);
-      return { success: true, data: result };
-    } catch (error) {
-      console.error('❌ Supermarket API connection failed:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
   }
 
   static async updateSupermarket(supermarketId: string, supermarketData: any, token?: string) {
@@ -593,365 +538,214 @@ export class SupermarketService {
     });
   }
 
-  static async deleteSupermarket(supermarketId: string, token?: string) {
-    return apiRequest(API_ENDPOINTS.SUPERMARKETS.DETAIL(supermarketId), {
-      method: HTTP_METHODS.DELETE,
+  static async getSupermarketStats(token?: string) {
+    return apiRequest(API_ENDPOINTS.SUPERMARKETS.STATS, {
+      token: token || AuthService.getToken() || undefined
+    });
+  }
+}
+
+// Barcode and ticket service
+export class BarcodeService {
+  static async getProductBarcode(productId: string, token?: string) {
+    return apiRequest(API_ENDPOINTS.INVENTORY.PRODUCT_BARCODE(productId), {
       token: token || AuthService.getToken() || undefined
     });
   }
 
-  /**
-   * Create a supermarket with default values if address/phone are missing
-   */
-  static async createSupermarketWithDefaults(
-    supermarketData: { 
-      name: string; 
-      address?: string; 
-      phone?: string; 
-      email?: string;
-      description?: string;
-      website?: string;
-      business_license?: string;
-      tax_id?: string;
-      is_sub_store?: boolean;
-      parent?: string;
-      timezone?: string;
-      currency?: string;
-      [key: string]: any;
-    }, 
-    token?: string
-  ) {
-    // Ensure all required fields have values
-    const completeData = {
-      name: supermarketData.name,
-      email: supermarketData.email || 'noemail@example.com',
-      address: supermarketData.address || 'Address not provided',
-      phone: supermarketData.phone || '+1234567890',
-      description: supermarketData.description || `${supermarketData.name} - Halal Inventory Management`,
-      website: supermarketData.website || '',
-      business_license: supermarketData.business_license || '',
-      tax_id: supermarketData.tax_id || '',
-      is_sub_store: supermarketData.is_sub_store || false,
-      parent: supermarketData.parent || null,
-      timezone: supermarketData.timezone || 'UTC',
-      currency: supermarketData.currency || 'USD',
-      pos_system_type: 'NONE',
-      pos_system_enabled: false,
-      pos_sync_enabled: false,
-      is_active: true
-    };
+  static async getProductTicket(productId: string, token?: string) {
+    return apiRequest(API_ENDPOINTS.INVENTORY.PRODUCT_TICKET(productId), {
+      token: token || AuthService.getToken() || undefined
+    });
+  }
 
-    console.log('Creating supermarket with complete data:', completeData);
-    
-    return this.createSupermarket(completeData, token);
+  static async generateBarcode(productId: string, token?: string) {
+    return apiRequest(API_ENDPOINTS.INVENTORY.GENERATE_BARCODE(productId), {
+      method: HTTP_METHODS.POST,
+      token: token || AuthService.getToken() || undefined
+    });
+  }
+
+  static async bulkGenerateTickets(productIds: string[], token?: string) {
+    return apiRequest(API_ENDPOINTS.INVENTORY.BULK_TICKETS, {
+      method: HTTP_METHODS.POST,
+      body: { product_ids: productIds },
+      token: token || AuthService.getToken() || undefined
+    });
+  }
+
+  static async bulkGenerateBarcodes(productIds: string[], token?: string) {
+    return apiRequest(API_ENDPOINTS.INVENTORY.BULK_BARCODES, {
+      method: HTTP_METHODS.POST,
+      body: { product_ids: productIds },
+      token: token || AuthService.getToken() || undefined
+    });
   }
 }
 
-// Types for mapping service
-export interface Category {
-  id: number;
-  name: string;
-}
-
-export interface Supplier {
-  id: number;
-  name: string;
-}
-
-export interface Supermarket {
-  id: string;
-  name: string;
-  address?: string;
-  phone?: string;
-}
-
-export interface SupermarketCreateData {
-  name: string;
-  address: string;
-  phone: string;
-  email?: string;
-  description?: string;
-  website?: string;
-  business_license?: string;
-  tax_id?: string;
-  is_sub_store?: boolean;
-  timezone?: string;
-  currency?: string;
-}
-
-export interface ProductWithNames {
-  name: string;
-  category: string;
-  supplier: string;
-  supermarket: string;
-  supermarketAddress?: string;
-  supermarketPhone?: string;
-  quantity: number;
-  price: number;
-  cost_price?: number;
-  selling_price?: number;
-  expiry_date?: string;
-  [key: string]: any;
-}
-
-export interface ProductWithIds {
-  name: string;
-  category: number;
-  supplier: number;
-  supermarket: string;
-  quantity: number;
-  price: number;
-  cost_price?: number;
-  selling_price?: number;
-  expiry_date?: string;
-  [key: string]: any;
-}
-
 // Mapping service for converting names to IDs
+// This is a critical service for Excel import functionality
 export class MappingService {
-  private static categoriesCache: Category[] | null = null;
-  private static suppliersCache: Supplier[] | null = null;
-  private static supermarketsCache: Supermarket[] | null = null;
-  private static cacheExpiry: number = 5 * 60 * 1000; // 5 minutes
-  private static lastCacheUpdate: number = 0;
+  private static categoryMap: Map<string, number> = new Map();
+  private static supplierMap: Map<string, number> = new Map();
+  private static supermarketMap: Map<string, string> = new Map();
+
+  /**
+   * Fetch all necessary mappings from the backend
+   */
+  static async fetchAllMappings(token?: string) {
+    console.log('Fetching all mappings...');
+    
+    const effectiveToken = token || AuthService.getToken() || undefined;
+    
+    // Fetch categories
+    const categories = await CategoryService.getCategories(effectiveToken);
+    this.categoryMap.clear();
+    categories.forEach((cat: any) => this.categoryMap.set(cat.name.toLowerCase(), cat.id));
+    console.log(`Fetched ${this.categoryMap.size} categories.`);
+
+    // Fetch suppliers
+    const suppliers = await SupplierService.getSuppliers(effectiveToken);
+    this.supplierMap.clear();
+    suppliers.forEach((sup: any) => this.supplierMap.set(sup.name.toLowerCase(), sup.id));
+    console.log(`Fetched ${this.supplierMap.size} suppliers.`);
+
+    // Fetch supermarkets
+    const supermarkets = await SupermarketService.getSupermarkets(effectiveToken);
+    this.supermarketMap.clear();
+    supermarkets.forEach((sup: any) => this.supermarketMap.set(sup.name.toLowerCase(), sup.id));
+    console.log(`Fetched ${this.supermarketMap.size} supermarkets.`);
+  }
 
   /**
    * Clear all cached mappings
    */
-  static clearCache(): void {
-    this.categoriesCache = null;
-    this.suppliersCache = null;
-    this.supermarketsCache = null;
-    this.lastCacheUpdate = 0;
+  static clearAllMappings() {
+    this.categoryMap.clear();
+    this.supplierMap.clear();
+    this.supermarketMap.clear();
+    console.log('Cleared all cached mappings.');
   }
 
   /**
-   * Check if cache is expired
+   * Get category ID from name, fetching if not cached
    */
-  private static isCacheExpired(): boolean {
-    return Date.now() - this.lastCacheUpdate > this.cacheExpiry;
+  static async getCategoryId(name: string, token?: string): Promise<number> {
+    const lowerCaseName = name.toLowerCase();
+    if (!this.categoryMap.has(lowerCaseName)) {
+      await this.fetchAllMappings(token);
+    }
+    const id = this.categoryMap.get(lowerCaseName);
+    if (!id) {
+      throw new Error(`Category not found: ${name}`);
+    }
+    return id;
   }
 
   /**
-   * Fetch and cache all mappings
+   * Get supplier ID from name, fetching if not cached
    */
-  static async fetchMappings(token?: string): Promise<{
-    categories: Category[];
-    suppliers: Supplier[];
-    supermarkets: Supermarket[];
-  }> {
-    const authToken = token || AuthService.getToken() || undefined;
-
-    // Return cached data if still valid
-    if (!this.isCacheExpired() && this.categoriesCache && this.suppliersCache && this.supermarketsCache) {
-      return {
-        categories: this.categoriesCache,
-        suppliers: this.suppliersCache,
-        supermarkets: this.supermarketsCache,
-      };
+  static async getSupplierId(name: string, token?: string): Promise<number> {
+    const lowerCaseName = name.toLowerCase();
+    if (!this.supplierMap.has(lowerCaseName)) {
+      await this.fetchAllMappings(token);
     }
-
-    try {
-      console.log('Fetching fresh mappings from API...');
-      
-      // Fetch all mappings in parallel
-      const [categoriesResponse, suppliersResponse, supermarketsResponse] = await Promise.all([
-        CategoryService.getCategories(authToken),
-        SupplierService.getSuppliers(authToken),
-        SupermarketService.getSupermarkets(authToken),
-      ]);
-
-      // Debug API responses
-      console.log("DEBUG API categories response:", categoriesResponse);
-      console.log("DEBUG API suppliers response:", suppliersResponse);
-      console.log("DEBUG API supermarkets response:", supermarketsResponse);
-
-      // Cache the results, ensuring they are arrays
-      const categoriesData = categoriesResponse.results || categoriesResponse;
-      const suppliersData = suppliersResponse.results || suppliersResponse;
-      const supermarketsData = supermarketsResponse.results || supermarketsResponse;
-
-      this.categoriesCache = Array.isArray(categoriesData) ? categoriesData : Object.values(categoriesData || {});
-      this.suppliersCache = Array.isArray(suppliersData) ? suppliersData : Object.values(suppliersData || {});
-      this.supermarketsCache = Array.isArray(supermarketsData) ? supermarketsData : Object.values(supermarketsData || {});
-      this.lastCacheUpdate = Date.now();
-
-      console.log('Mappings cached successfully:', {
-        categories: this.categoriesCache?.length || 0,
-        suppliers: this.suppliersCache?.length || 0,
-        supermarkets: this.supermarketsCache?.length || 0,
-      });
-
-      return {
-        categories: this.categoriesCache || [],
-        suppliers: this.suppliersCache || [],
-        supermarkets: this.supermarketsCache || [],
-      };
-    } catch (error) {
-      console.error('Failed to fetch mappings:', error);
-      throw new Error('Failed to fetch required mappings from API');
+    const id = this.supplierMap.get(lowerCaseName);
+    if (!id) {
+      throw new Error(`Supplier not found: ${name}`);
     }
+    return id;
   }
 
   /**
-   * Convert a single product from names to IDs
+   * Get supermarket ID from name, fetching if not cached.
+   * If the supermarket doesn't exist, it attempts to create it.
    */
-  static async convertProductNamesToIds(
-    product: ProductWithNames,
-    token?: string
-  ): Promise<ProductWithIds> {
-    const { categories, suppliers, supermarkets } = await this.fetchMappings(token);
-
-    // Debug logging to identify the issue
-    console.log("DEBUG categories:", categories);
-    console.log("DEBUG categories type:", typeof categories);
-    console.log("DEBUG categories is array:", Array.isArray(categories));
-
-    // Ensure categories is an array
-    const categoriesArray = Array.isArray(categories) ? categories : Object.values(categories || {});
-    
-    // Find matching category
-    const category = (categoriesArray as Array<{id:number; name:string}>).find((c) => 
-      c.name.toLowerCase().trim() === product.category.toLowerCase().trim()
-    );
-    if (!category) {
-      throw new Error(`Category not found: "${product.category}". Available categories: ${(categoriesArray as any[]).map((c:any) => c.name).join(', ')}`);
+  static async getSupermarketId(name: string, token?: string): Promise<string> {
+    const lowerCaseName = name.toLowerCase();
+    if (!this.supermarketMap.has(lowerCaseName)) {
+      await this.fetchAllMappings(token);
     }
-
-    // Ensure suppliers is an array
-    const suppliersArray = Array.isArray(suppliers) ? suppliers : Object.values(suppliers || {});
     
-    // Find matching supplier
-    const supplier = (suppliersArray as Array<{id:number; name:string}>).find((s) => 
-      s.name.toLowerCase().trim() === product.supplier.toLowerCase().trim()
-    );
-    if (!supplier) {
-      throw new Error(`Supplier not found: "${product.supplier}". Available suppliers: ${(suppliersArray as any[]).map((s:any) => s.name).join(', ')}`);
-    }
-
-    // Ensure supermarkets is an array
-    const supermarketsArray = Array.isArray(supermarkets) ? supermarkets : Object.values(supermarkets || {});
+    let id = this.supermarketMap.get(lowerCaseName);
     
-    // Find matching supermarket
-    let supermarket = (supermarketsArray as Array<{id:number; name:string; address?:string; phone?:string}>).find((s) => 
-      s.name.toLowerCase().trim() === product.supermarket.toLowerCase().trim()
-    );
-    
-    // If supermarket doesn't exist, try to create it
-    if (!supermarket) {
-      console.log(`Supermarket "${product.supermarket}" not found. Attempting to create it...`);
-      
-      // We can now create supermarkets with default values, so no need to check for address/phone
-
+    if (!id) {
+      console.warn(`Supermarket "${name}" not found. Attempting to create it...`);
       try {
-        // Create the new supermarket (with defaults if address/phone missing)
-        const newSupermarket = product.supermarketAddress && product.supermarketPhone
-          ? await SupermarketService.createSupermarket({
-              name: product.supermarket,
-              address: product.supermarketAddress,
-              phone: product.supermarketPhone
-            }, token)
-          : await SupermarketService.createSupermarketWithDefaults({
-              name: product.supermarket,
-              address: product.supermarketAddress,
-              phone: product.supermarketPhone
-            }, token);
-
-        console.log(`Successfully created supermarket: ${product.supermarket}`);
+        const newSupermarket = await SupermarketService.createSupermarketWithDefaults({
+          name: name,
+          address: 'Default Address',
+          phone: '000-000-0000',
+          email: `${name.replace(/\s+/g, '').toLowerCase()}@default.com`,
+          description: `Auto-created supermarket: ${name}`,
+        }, token);
         
-        // Clear cache to force refresh on next fetch
-        this.clearCache();
+        // After creation, refetch mappings to get the new ID
+        await this.fetchAllMappings(token);
+        id = this.supermarketMap.get(lowerCaseName);
         
-        // Use the newly created supermarket
-        supermarket = {
-          id: (newSupermarket as any).id,
-          name: (newSupermarket as any).name,
-          address: (newSupermarket as any).address,
-          phone: (newSupermarket as any).phone
-        } as any;
+        if (!id) {
+          throw new Error(`Failed to create or find supermarket: ${name}`);
+        }
+        
+        console.log(`Successfully created and mapped new supermarket: ${name}`);
       } catch (error) {
-        console.error(`Failed to create supermarket "${product.supermarket}":`, error);
-        throw new Error(
-          `Supermarket not found: "${product.supermarket}" and failed to create it. ` +
-          `Error: ${error instanceof Error ? error.message : 'Unknown error'}. ` +
-          `Available supermarkets: ${(supermarketsArray as any[]).map((s:any) => s.name).join(', ')}`
-        );
+        console.error(`Error auto-creating supermarket "${name}":`, error);
+        throw new Error(`Could not find or create supermarket: ${name}`);
       }
     }
-
-    // Return product with IDs
-    return {
-      ...product,
-      category: (category as any).id,
-      supplier: (supplier as any).id,
-      supermarket: String((supermarket as any)?.id ?? ''),
-    };
+    
+    return id;
   }
 
   /**
-   * Convert multiple products from names to IDs
+   * Convert a single product with name-based fields to ID-based fields
    */
-  static async convertProductsNamesToIds(
-    products: ProductWithNames[],
-    token?: string
-  ): Promise<ProductWithIds[]> {
-    // Fetch mappings once for all products
-    await this.fetchMappings(token);
+  static async convertProductNamesToIds(product: ProductWithNames, token?: string): Promise<any> {
+    const converted: any = { ...product };
 
-    const convertedProducts: ProductWithIds[] = [];
-    const errors: string[] = [];
-
-    for (let i = 0; i < products.length; i++) {
-      try {
-        const convertedProduct = await this.convertProductNamesToIds(products[i], token);
-        convertedProducts.push(convertedProduct);
-      } catch (error) {
-        const errorMessage = `Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`;
-        errors.push(errorMessage);
-        console.error(errorMessage);
-      }
+    if (product.category_name) {
+      converted.category = await this.getCategoryId(product.category_name, token);
+      delete converted.category_name;
     }
 
-    if (errors.length > 0) {
-      throw new Error(`Failed to convert ${errors.length} products:\n${errors.join('\n')}`);
+    if (product.supplier_name) {
+      converted.supplier = await this.getSupplierId(product.supplier_name, token);
+      delete converted.supplier_name;
     }
 
+    if (product.supermarket_name) {
+      converted.supermarket = await this.getSupermarketId(product.supermarket_name, token);
+      delete converted.supermarket_name;
+    }
+
+    return converted;
+  }
+
+  /**
+   * Convert an array of products from names to IDs
+   */
+  static async convertProductsNamesToIds(products: ProductWithNames[], token?: string): Promise<any[]> {
+    // Fetch all mappings once to optimize
+    await this.fetchAllMappings(token);
+    
+    const convertedProducts = [];
+    for (const product of products) {
+      const converted = await this.convertProductNamesToIds(product, token);
+      convertedProducts.push(converted);
+    }
+    
     return convertedProducts;
-  }
-
-  /**
-   * Get available options for dropdowns/validation
-   */
-  static async getAvailableOptions(token?: string): Promise<{
-    categories: string[];
-    suppliers: string[];
-    supermarkets: string[];
-  }> {
-    const { categories, suppliers, supermarkets } = await this.fetchMappings(token);
-
-    // Ensure all data is in array format before mapping
-    const categoriesArray = Array.isArray(categories) ? categories : Object.values(categories || {});
-    const suppliersArray = Array.isArray(suppliers) ? suppliers : Object.values(suppliers || {});
-    const supermarketsArray = Array.isArray(supermarkets) ? supermarkets : Object.values(supermarkets || {});
-
-    return {
-      categories: (categoriesArray as any[]).map((c:any) => c.name),
-      suppliers: (suppliersArray as any[]).map((s:any) => s.name),
-      supermarkets: (supermarketsArray as any[]).map((s:any) => s.name),
-    };
   }
 }
 
-
-
-export default {
-  AuthService,
-  ProductService,
-  CategoryService,
-  SupplierService,
-  SupermarketService,
-  MappingService,
-  apiRequest,
-  API_ENDPOINTS,
-  HTTP_METHODS
-};
+// Type definition for product with name-based references
+export interface ProductWithNames {
+  name: string;
+  price: number;
+  quantity: number;
+  category_name: string;
+  supplier_name: string;
+  supermarket_name: string;
+  [key: string]: any; // Allow other fields
+}

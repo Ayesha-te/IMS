@@ -60,34 +60,43 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
     }
   }, [initialProduct]);
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [generalError, setGeneralError] = useState<string>('');
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setFieldErrors({});
+    setGeneralError('');
+
     // Validate required fields
     if (!formData.name.trim()) {
-      alert('Product name is required');
-      return;
+      setFieldErrors(prev => ({ ...prev, name: 'Product name is required' }));
     }
     if (!formData.category.trim()) {
-      alert('Category is required');
-      return;
+      setFieldErrors(prev => ({ ...prev, category: 'Category is required' }));
     }
     if (!formData.supplier.trim()) {
-      alert('Supplier is required');
-      return;
+      setFieldErrors(prev => ({ ...prev, supplier: 'Supplier is required' }));
     }
     if (!formData.expiryDate) {
-      alert('Expiry date is required');
-      return;
+      setFieldErrors(prev => ({ ...prev, expiryDate: 'Expiry date is required' }));
     }
     if (formData.costPrice <= 0) {
-      alert('Cost price must be greater than 0');
-      return;
+      setFieldErrors(prev => ({ ...prev, costPrice: 'Cost price must be greater than 0' }));
     }
     if (formData.sellingPrice <= 0) {
-      alert('Selling price must be greater than 0');
-      return;
+      setFieldErrors(prev => ({ ...prev, sellingPrice: 'Selling price must be greater than 0' }));
     }
+
+    const hasErrors = (
+      !formData.name.trim() ||
+      !formData.category.trim() ||
+      !formData.supplier.trim() ||
+      !formData.expiryDate ||
+      formData.costPrice <= 0 ||
+      formData.sellingPrice <= 0
+    );
+    if (hasErrors) return;
     
     if (initialProduct) {
       onSave({
@@ -276,8 +285,33 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
             </button>
           </div>
 
+        {generalError && (
+          <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">
+            {generalError}
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Store (single select) */}
+            <div>
+              <label htmlFor="supermarketId" className="block text-sm font-medium text-gray-700 mb-2">
+                Store *
+              </label>
+              <select
+                id="supermarketId"
+                name="supermarketId"
+                value={formData.supermarketId}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80"
+              >
+                <option value="">Select a store</option>
+                {userStores.map(store => (
+                  <option key={store.id} value={store.id}>{store.name}</option>
+                ))}
+              </select>
+            </div>
+
             {/* Product Name */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
@@ -290,9 +324,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80"
+                aria-invalid={!!fieldErrors.name}
+                className={`w-full px-4 py-3 border ${fieldErrors.name ? 'border-red-300' : 'border-gray-200'} rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80`}
                 placeholder="Enter product name"
               />
+              {fieldErrors.name && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>
+              )}
             </div>
 
 
@@ -307,7 +345,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
                 value={formData.category}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80"
+                aria-invalid={!!fieldErrors.category}
+                className={`w-full px-4 py-3 border ${fieldErrors.category ? 'border-red-300' : 'border-gray-200'} rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80`}
               >
                 <option value="">Select a category</option>
                 {categories.map(cat => (
@@ -328,9 +367,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
                 value={formData.supplier}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80"
+                aria-invalid={!!fieldErrors.supplier}
+                className={`w-full px-4 py-3 border ${fieldErrors.supplier ? 'border-red-300' : 'border-gray-200'} rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80`}
                 placeholder="Enter supplier name"
               />
+              {fieldErrors.supplier && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.supplier}</p>
+              )}
             </div>
 
             {/* Quantity */}
@@ -363,8 +406,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
                 value={formData.expiryDate}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80"
+                aria-invalid={!!fieldErrors.expiryDate}
+                className={`w-full px-4 py-3 border ${fieldErrors.expiryDate ? 'border-red-300' : 'border-gray-200'} rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80`}
               />
+              {fieldErrors.expiryDate && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.expiryDate}</p>
+              )}
             </div>
 
             {/* Cost Price */}
@@ -381,9 +428,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
                 min="0"
                 step="0.01"
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80"
+                aria-invalid={!!fieldErrors.costPrice}
+                className={`w-full px-4 py-3 border ${fieldErrors.costPrice ? 'border-red-300' : 'border-gray-200'} rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80`}
                 placeholder="Enter cost price"
               />
+              {fieldErrors.costPrice && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.costPrice}</p>
+              )}
             </div>
 
             {/* Selling Price */}
@@ -400,9 +451,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
                 min="0"
                 step="0.01"
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80"
+                aria-invalid={!!fieldErrors.sellingPrice}
+                className={`w-full px-4 py-3 border ${fieldErrors.sellingPrice ? 'border-red-300' : 'border-gray-200'} rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80`}
                 placeholder="Enter selling price"
               />
+              {fieldErrors.sellingPrice && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.sellingPrice}</p>
+              )}
             </div>
 
             {/* Display Price (calculated or manual) */}
@@ -483,8 +538,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
                 value={formData.expiryDate}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80"
+                aria-invalid={!!fieldErrors.expiryDate}
+                className={`w-full px-4 py-3 border ${fieldErrors.expiryDate ? 'border-red-300' : 'border-gray-200'} rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80`}
               />
+              {fieldErrors.expiryDate && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.expiryDate}</p>
+              )}
             </div>
 
             {/* Description */}

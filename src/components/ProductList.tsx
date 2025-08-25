@@ -213,25 +213,13 @@ const ProductList: React.FC<ProductListProps> = ({
                     </td>
                     <td className="px-4 py-3">{product.category}</td>
                     <td className="px-4 py-3">
-                      <div className="flex items-start">
-                        <div className="flex items-center text-sm">
-                          <MapPin className="w-4 h-4 text-blue-600 mr-1 flex-shrink-0" />
-                          <div>
-                            <div className="font-medium text-blue-800">
-                              {supermarketInfo.name}
-                              {supermarketInfo.isSubStore && (
-                                <span className="ml-1 px-1 py-0.5 bg-purple-100 text-purple-600 text-xs rounded">
-                                  Sub
-                                </span>
-                              )}
-                            </div>
-                            {supermarketInfo.address && (
-                              <div className="text-xs text-gray-500 truncate max-w-32">
-                                {supermarketInfo.address}
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                      <div className="text-sm font-medium text-blue-800">
+                        {supermarketInfo.name}
+                        {supermarketInfo.isSubStore && (
+                          <span className="ml-1 px-1 py-0.5 bg-purple-100 text-purple-600 text-xs rounded">
+                            Sub
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3">

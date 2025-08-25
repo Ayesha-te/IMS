@@ -111,6 +111,7 @@ export const useProducts = () => {
         price: Number(p.selling_price ?? p.price ?? 0),
         addedDate: String(p.added_date ?? p.addedDate ?? new Date().toISOString()),
         supermarketId: normalizedSupermarketRef,
+        supermarketName: String(p.supermarket_name ?? p.store_name ?? p.market_name ?? ''),
         description: p.description ?? '',
         brand: p.brand ?? '',
         weight: p.weight ?? '',
@@ -156,15 +157,52 @@ export const useSuppliers = () => {
   }, [token]);
 };
 
-// Supermarkets hook - now returns only user's supermarkets
+// Supermarkets hook - returns current user's supermarkets, mapped to UI shape
 export const useSupermarkets = () => {
   const { token } = useAuth();
   return useApiData(async () => {
-    const response = await SupermarketService.getUserSupermarkets(token || undefined);
-    // Handle paginated/object response
-    if (Array.isArray(response)) return response;
-    if (response.supermarkets && Array.isArray(response.supermarkets)) return response.supermarkets;
-    return response.results || [];
+    const response = await SupermarketService.getSupermarkets(token || undefined);
+
+    // Debug the raw shape once
+    try {
+      // eslint-disable-next-line no-console
+      console.log('RAW_SUPERMARKETS_RESPONSE', response);
+    } catch {}
+
+    let rawArray: any[] = [];
+    if (Array.isArray(response)) {
+      rawArray = response;
+    } else if (Array.isArray(response?.results)) {
+      rawArray = response.results;
+    } else if (Array.isArray(response?.supermarkets)) {
+      rawArray = response.supermarkets;
+    } else if (Array.isArray(response?.my_stores)) {
+      rawArray = response.my_stores;
+    } else if (Array.isArray(response?.items)) {
+      rawArray = response.items;
+    } else if (Array.isArray(response?.data)) {
+      rawArray = response.data;
+    } else if (response?.data?.results && Array.isArray(response.data.results)) {
+      rawArray = response.data.results;
+    }
+
+    // Map to Supermarket UI shape expected by components
+    const mapped = rawArray.map((s: any) => ({
+      id: String(s.id ?? s.uuid ?? s.pk ?? ''),
+      name: String(s.name ?? s.title ?? ''),
+      address: String(s.address ?? s.location ?? ''),
+      phone: String(s.phone ?? s.contact_phone ?? ''),
+      email: String(s.email ?? s.contact_email ?? ''),
+      registrationDate: String(s.created_at ?? s.registration_date ?? s.date_joined ?? new Date().toISOString()),
+      isVerified: Boolean(s.is_verified ?? s.verified ?? false),
+      logo: s.logo ?? undefined,
+      description: s.description ?? '',
+      parentId: s.parent_id ? String(s.parent_id) : (s.parent ? String(s.parent) : undefined),
+      isSubStore: Boolean(s.is_sub_store ?? s.sub_store ?? false),
+      ownerId: s.owner_id ? String(s.owner_id) : (s.owner ? String(s.owner) : ''),
+    }));
+
+    return mapped;
   }, [token]);
 };
 

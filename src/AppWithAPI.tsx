@@ -10,6 +10,7 @@ import ProductCatalog from './components/ProductCatalog';
 import Analytics from './components/Analytics';
 import Settings from './components/Settings';
 import SubStoreManagement from './components/SubStoreManagement';
+import MyStores from './components/MyStores';
 import POSSync from './components/POSSync';
 import DashboardGraphs from './components/DashboardGraphs';
 import BarcodeTicketManager from './components/BarcodeTicketManager';
@@ -35,9 +36,10 @@ const AppContent: React.FC = () => {
     try {
       await login(email, password);
       setCurrentView('dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed:', error);
-      throw error;
+      // Surface meaningful error back to Auth component
+      throw new Error(error?.message || 'Login failed. Please check your credentials.');
     }
   };
 
@@ -75,9 +77,10 @@ const AppContent: React.FC = () => {
       }
       
       setCurrentView('dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Signup failed:', error);
-      throw error;
+      // Bubble backend validation like password too short, email taken
+      throw new Error(error?.message || 'Registration failed. Please check your details.');
     }
   };
 
@@ -304,13 +307,14 @@ const AppContent: React.FC = () => {
     { id: 'settings', label: 'Settings', icon: '⚙️' }
   ] : [];
 
-  // Get primary supermarket
-  const primarySupermarket = supermarkets && supermarkets.length > 0 ? supermarkets[0] : null;
+  // Determine selected supermarket: saved selection -> first available
+  const savedSupermarketId = (typeof window !== 'undefined') ? localStorage.getItem(STORAGE_KEYS.CURRENT_SUPERMARKET_ID) : null;
+  const selectedSupermarket = (supermarkets || []).find((s: any) => String(s.id) === String(savedSupermarketId)) || (supermarkets && supermarkets[0]) || null;
   
   // Debug supermarket data
   console.log('🏪 Supermarkets data:', supermarkets);
-  console.log('🏪 Primary supermarket:', primarySupermarket);
-  console.log('🏪 Supermarket ID being passed:', primarySupermarket?.id?.toString() || '(none)');
+  console.log('🏪 Selected supermarket:', selectedSupermarket);
+  console.log('🏪 Supermarket ID being passed:', selectedSupermarket?.id?.toString() || '(none)');
 
   if (isLoading) {
     return (
@@ -343,9 +347,9 @@ const AppContent: React.FC = () => {
               <div className="flex items-center space-x-3">
                 {isAuthenticated && user ? (
                   <>
-                    {primarySupermarket && (
+                    {selectedSupermarket && (
                       <span className="px-4 py-2 bg-emerald-100 text-emerald-800 rounded-lg font-medium text-sm">
-                        {primarySupermarket.name}
+                        {selectedSupermarket.name}
                       </span>
                     )}
                     <div className="flex items-center space-x-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-lg">
@@ -445,6 +449,8 @@ const AppContent: React.FC = () => {
                       />
                       <Dashboard 
                         products={products} 
+                        supermarkets={supermarkets || []}
+                        selectedSupermarketId={selectedSupermarket?.id?.toString() || ''}
                         onEditProduct={(product) => {
                           setEditingProduct(product);
                           setCurrentView('add-product');
@@ -482,7 +488,8 @@ const AppContent: React.FC = () => {
                       refetchProducts();
                     }}
                     initialProduct={editingProduct}
-                    supermarketId={primarySupermarket?.id?.toString() || ''}
+                    supermarketId={selectedSupermarket?.id?.toString() || ''}
+                    userStores={supermarkets || []}
                     onCancel={() => {
                       setCurrentView('dashboard');
                       setEditingProduct(null);
@@ -509,22 +516,15 @@ const AppContent: React.FC = () => {
               )}
 
               {currentView === 'stores' && user && (
-                <SubStoreManagement 
-                  supermarkets={supermarkets || []}
-                  products={products || []}
-                  currentUser={user}
-                  onAddSupermarket={async (supermarketData) => {
-                    await SupermarketService.createSupermarket(supermarketData);
-                    // Refresh supermarkets
-                  }}
-                  onUpdateSupermarket={async (updatedSupermarket) => {
-                    // Handle update
-                  }}
-                  onDeleteSupermarket={async (id) => {
-                    // Handle delete
-                  }}
-                  onBulkProductAction={async (action, productIds, targetStoreId) => {
-                    // Handle bulk actions
+                <MyStores 
+                  stores={supermarkets || []}
+                  onNavigateToStore={(storeId: string) => {
+                    try {
+                      if (typeof window !== 'undefined') {
+                        localStorage.setItem(STORAGE_KEYS.CURRENT_SUPERMARKET_ID, String(storeId));
+                      }
+                      setCurrentView('dashboard');
+                    } catch {}
                   }}
                 />
               )}
@@ -536,7 +536,7 @@ const AppContent: React.FC = () => {
                     Connect your inventory with your Point-of-Sale (POS) system.
                   </p>
                   <POSSync 
-                    supermarket={primarySupermarket}
+                    supermarket={selectedSupermarket as any}
                     onUpdatePOS={(storeId, posConfig) => {
                       // Handle POS update
                     }}

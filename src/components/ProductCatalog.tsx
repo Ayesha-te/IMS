@@ -207,7 +207,6 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, supermarkets 
                     {/* Supermarket Info */}
                     <div className="bg-blue-50 rounded-lg p-3 mb-3">
                       <div className="flex items-center text-sm text-blue-800 mb-1">
-                        <MapPin className="w-4 h-4 mr-1" />
                         <span className="font-semibold">{getSupermarketName(product.supermarketId)}</span>
                       </div>
                       {(() => {

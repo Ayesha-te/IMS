@@ -1,8 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Download, Printer, QrCode, BarChart3, FileText, Grid3X3, CheckSquare } from 'lucide-react';
-import { useReactToPrint } from 'react-to-print';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { BarChart3, FileText, CheckSquare } from 'lucide-react';
 import ProductTicket from './ProductTicket';
 import BarcodeGenerator from './BarcodeGenerator';
 import barcodeService from '../services/barcodeService';
@@ -60,56 +57,7 @@ const BarcodeTicketManager: React.FC<BarcodeTicketManagerProps> = ({
     return products.filter(p => selectedProducts.includes(p.id));
   };
 
-  // Print function
-  const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    documentTitle: `Product ${viewMode === 'tickets' ? 'Tickets' : 'Barcodes'}`,
-    pageStyle: `
-      @page { size: A4; margin: 10mm; }
-      @media print {
-        body { -webkit-print-color-adjust: exact; }
-        .no-print { display: none !important; }
-      }
-    ` as string
-  } as any);
-
-  // Export to PDF
-  const handleExportPDF = async () => {
-    if (!printRef.current) return;
-
-    try {
-      const canvas = await html2canvas(printRef.current, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 295; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save(`product-${viewMode}-${new Date().toISOString().split('T')[0]}.pdf`);
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Error generating PDF. Please try again.');
-    }
-  };
+  // Print and Export PDF features removed per request
 
   // Download individual barcode
   const downloadBarcode = async (product: Product) => {
@@ -191,22 +139,6 @@ const BarcodeTicketManager: React.FC<BarcodeTicketManagerProps> = ({
         <div className="flex items-center space-x-3">
           {selectedProductsData.length > 0 && (
             <>
-              <button
-                onClick={handlePrint}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Print ({selectedProductsData.length})</span>
-              </button>
-              
-              <button
-                onClick={handleExportPDF}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                <span>Export PDF</span>
-              </button>
-
               {viewMode === 'tickets' ? (
                 <button
                   onClick={downloadBulkTickets}

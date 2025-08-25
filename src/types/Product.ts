@@ -8,6 +8,7 @@ interface ProductInterface {
   price: number;
   addedDate: string;
   supermarketId: string;
+  supermarketName?: string;
   description?: string;
   brand?: string;
   weight?: string;

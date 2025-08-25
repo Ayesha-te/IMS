@@ -387,8 +387,9 @@ const AdaptiveProductForm: React.FC<AdaptiveProductFormProps> = ({
                         id="addToMultipleStores"
                         checked={addToMultipleStores}
                         onChange={(e) => {
-                          setAddToMultipleStores(e.target.checked);
-                          if (!e.target.checked) {
+                          const checked = e.target.checked;
+                          setAddToMultipleStores(checked);
+                          if (!checked) {
                             setSelectedStoresForNewProduct([]);
                           }
                         }}
@@ -398,6 +399,31 @@ const AdaptiveProductForm: React.FC<AdaptiveProductFormProps> = ({
                         Add this product to multiple stores
                       </label>
                     </div>
+
+                    {/* Quick toggle: add to ALL stores */}
+                    {addToMultipleStores && (
+                      <div className="mb-2">
+                        <label className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id="addToAllStores"
+                            checked={selectedStoresForNewProduct.length === storeContext.userStores.length && storeContext.userStores.length > 0}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                const allIds = storeContext.userStores.map(s => s.id);
+                                setSelectedStoresForNewProduct(allIds);
+                              } else {
+                                setSelectedStoresForNewProduct([]);
+                              }
+                            }}
+                            className="mr-2"
+                          />
+                          <span className="text-sm text-blue-800">
+                            Add to all my stores ({storeContext.userStores.length})
+                          </span>
+                        </label>
+                      </div>
+                    )}
                     
                     {addToMultipleStores && (
                       <div className="mt-3">

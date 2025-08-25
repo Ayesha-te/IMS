@@ -68,9 +68,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Persist for services that read current user
         AuthService.setCurrentUser(fallback);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed:', error);
-      throw error;
+      // Normalize to meaningful message for UI
+      throw new Error(error?.message || 'Invalid email or password.');
     } finally {
       setIsLoading(false);
     }
@@ -82,9 +83,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const response = await AuthService.register(userData);
       // Handle registration response
       return response;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration failed:', error);
-      throw error;
+      // Bubble field-level errors (e.g., password too short, email taken)
+      throw new Error(error?.message || 'Registration failed. Please check your details.');
     } finally {
       setIsLoading(false);
     }

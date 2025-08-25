@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Camera, Image, CheckCircle, XCircle, AlertCircle, Edit3, Info, Download, HelpCircle } from 'lucide-react';
-import type { Product } from '../types/Product';
+import type { Product, Supermarket, User } from '../types/Product';
 import { 
   generateImageImportGuide, 
   validateImageData, 
@@ -10,9 +10,11 @@ import {
 import type { ImageProductData } from '../utils/imageTemplates';
 
 interface ImageImportProps {
-  onProductExtracted: (product: Omit<Product, 'id'>) => void;
+  onProductExtracted: (product: Omit<Product, 'id'>, storeIds?: string[]) => void;
   onCancel: () => void;
-  supermarketId: string;
+  supermarkets?: Supermarket[]; // for multi-store selection
+  currentUser?: User | null;
+  supermarketId?: string; // fallback single store id
 }
 
 
@@ -30,7 +32,7 @@ interface ExtractedData {
   confidence: number;
 }
 
-const ImageImport: React.FC<ImageImportProps> = ({ onProductExtracted, onCancel, supermarketId }) => {
+const ImageImport: React.FC<ImageImportProps> = ({ onProductExtracted, onCancel, supermarkets = [], currentUser = null, supermarketId }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
@@ -38,6 +40,12 @@ const ImageImport: React.FC<ImageImportProps> = ({ onProductExtracted, onCancel,
   const [editingProduct, setEditingProduct] = useState<Partial<Product>>({});
   const [showGuide, setShowGuide] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Multi-store selection
+  const isMultiStore = Array.isArray(supermarkets) && supermarkets.length > 1;
+  const [addToMultipleStores, setAddToMultipleStores] = useState(false);
+  const [selectedStores, setSelectedStores] = useState<string[]>([]);
+  const [addToAllStores, setAddToAllStores] = useState(false);
 
   // Download image import guide
   const downloadGuide = () => {
@@ -102,8 +110,9 @@ const ImageImport: React.FC<ImageImportProps> = ({ onProductExtracted, onCancel,
         supplier: ''
       });
 
-    } catch (err) {
-      setError('Failed to process image. Please try again.');
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to process image. Please try again.';
+      setError(msg);
     } finally {
       setIsProcessing(false);
     }
@@ -118,7 +127,13 @@ const ImageImport: React.FC<ImageImportProps> = ({ onProductExtracted, onCancel,
 
   const handleConfirmProduct = () => {
     if (editingProduct.name && editingProduct.category && editingProduct.quantity && editingProduct.price && editingProduct.supplier && editingProduct.expiryDate) {
-      onProductExtracted(editingProduct as Omit<Product, 'id'>);
+      const baseProduct = editingProduct as Omit<Product, 'id'>;
+      if (isMultiStore && addToMultipleStores) {
+        const storeIds = addToAllStores ? supermarkets.map(s => s.id) : selectedStores;
+        onProductExtracted(baseProduct, storeIds);
+      } else {
+        onProductExtracted({ ...baseProduct, supermarketId: supermarketId || baseProduct.supermarketId || '' });
+      }
     }
   };
 
@@ -471,6 +486,85 @@ const ImageImport: React.FC<ImageImportProps> = ({ onProductExtracted, onCancel,
                   />
                 </div>
               </div>
+
+              {/* Multi-store selection (optional) */}
+              {isMultiStore && (
+                <div className="bg-green-50 rounded-xl p-4 mt-6">
+                  <div className="flex items-center mb-3">
+                    <input
+                      type="checkbox"
+                      id="imgAddToMultipleStores"
+                      checked={addToMultipleStores}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setAddToMultipleStores(checked);
+                        if (!checked) {
+                          setSelectedStores([]);
+                          setAddToAllStores(false);
+                        }
+                      }}
+                      className="mr-2"
+                    />
+                    <label htmlFor="imgAddToMultipleStores" className="text-sm font-medium text-green-800">
+                      Add this product to multiple stores
+                    </label>
+                  </div>
+
+                  {addToMultipleStores && (
+                    <>
+                      <div className="mb-2">
+                        <label className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id="imgAddToAllStores"
+                            checked={addToAllStores}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setAddToAllStores(checked);
+                              if (checked) {
+                                setSelectedStores(supermarkets.map(s => s.id));
+                              } else {
+                                setSelectedStores([]);
+                              }
+                            }}
+                            className="mr-2"
+                          />
+                          <span className="text-sm text-green-800">
+                            Add to all my stores ({supermarkets.length})
+                          </span>
+                        </label>
+                      </div>
+
+                      {!addToAllStores && (
+                        <div className="mt-2">
+                          <p className="text-sm text-green-700 mb-2">Select specific stores:</p>
+                          <div className="max-h-32 overflow-y-auto space-y-2 bg-white rounded-lg p-3 border border-green-200">
+                            {supermarkets.map(store => (
+                              <label key={store.id} className="flex items-center">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedStores.includes(store.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedStores(prev => [...prev, store.id]);
+                                    } else {
+                                      setSelectedStores(prev => prev.filter(id => id !== store.id));
+                                    }
+                                  }}
+                                  className="mr-3"
+                                />
+                                <span className="text-sm">
+                                  {store.name} {store.isSubStore ? '(Sub-Store)' : '(Main Store)'}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
 
               <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200 mt-6">
                 <button
