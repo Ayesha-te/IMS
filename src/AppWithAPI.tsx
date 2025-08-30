@@ -15,13 +15,14 @@ import POSSync from './components/POSSync';
 import DashboardGraphs from './components/DashboardGraphs';
 import BarcodeTicketManager from './components/BarcodeTicketManager';
 import { STORAGE_KEYS } from './constants/storageKeys';
+import Suppliers from './components/Suppliers';
 
 import type { Product, User } from './types/Product';
 
 // Main App Content Component
 const AppContent: React.FC = () => {
   const { user, isAuthenticated, isLoading, login, logout, register } = useAuth();
-  const [currentView, setCurrentView] = useState<'dashboard' | 'scanner' | 'add-product' | 'stores' | 'catalog' | 'analytics' | 'pos-sync' | 'settings' | 'barcode-demo' | 'login' | 'signup'>('login');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'scanner' | 'add-product' | 'stores' | 'catalog' | 'analytics' | 'pos-sync' | 'settings' | 'barcode-demo' | 'suppliers' | 'login' | 'signup'>('login');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedForBT, setSelectedForBT] = useState<string[]>([]);
 
@@ -304,6 +305,7 @@ const AppContent: React.FC = () => {
     { id: 'stores', label: 'My Stores', icon: '🏪' },
     { id: 'pos-sync', label: 'POS Sync', icon: '🔄' },
     { id: 'analytics', label: 'Analytics', icon: '📈' },
+    { id: 'suppliers', label: 'Suppliers', icon: '🤝' },
     { id: 'settings', label: 'Settings', icon: '⚙️' }
   ] : [];
 
@@ -549,6 +551,12 @@ const AppContent: React.FC = () => {
                   products={products || []}
                   supermarkets={supermarkets || []}
                 />
+              )}
+
+              {currentView === 'suppliers' && (
+                <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-rose-200 p-8">
+                  <Suppliers />
+                </div>
               )}
 
               {currentView === 'settings' && (

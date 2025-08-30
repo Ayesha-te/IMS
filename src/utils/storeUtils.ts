@@ -100,6 +100,9 @@ export const getNavigationItems = (storeContext: StoreContext, isAuthenticated: 
     { id: 'scanner', label: 'Scanner', icon: '📱' },
     { id: 'pos-sync', label: 'POS Sync', icon: '🔄' },
     { id: 'analytics', label: 'Analytics', icon: '📈' },
+    { id: 'suppliers', label: 'Suppliers', icon: '🤝' },
+    { id: 'purchase-orders', label: 'Purchase Orders', icon: '🧾' },
+    { id: 'purchasing-reports', label: 'Purchasing Reports', icon: '📑' },
     { id: 'settings', label: 'Settings', icon: '⚙️' }
   );
 

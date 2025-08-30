@@ -1,5 +1,5 @@
 import Auth from './features/auth';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Dashboard from './components/Dashboard';
 import ProductScanner from './components/ProductScanner';
 import ProductForm from './components/ProductForm';
@@ -8,6 +8,7 @@ import SupermarketDashboardView from './components/SupermarketDashboardView';
 import ProductCatalog from './components/ProductCatalog';
 import Analytics from './components/Analytics';
 import Settings from './components/Settings';
+import Suppliers from './components/Suppliers';
 import SubStoreManagement from './components/SubStoreManagement';
 import MultiStoreDashboard from './components/MultiStoreDashboard';
 import MultiStoreProductCatalog from './components/MultiStoreProductCatalog';
@@ -28,7 +29,7 @@ import type { Product, Supermarket, User } from './types/Product';
 
 
 function App() {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'supermarket-overview' | 'scanner' | 'add-product' | 'stores' | 'catalog' | 'analytics' | 'pos-sync' | 'settings' | 'barcode-demo' | 'login' | 'signup'>('login');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'supermarket-overview' | 'scanner' | 'add-product' | 'stores' | 'catalog' | 'analytics' | 'pos-sync' | 'settings' | 'barcode-demo' | 'suppliers' | 'purchase-orders' | 'purchasing-reports' | 'login' | 'signup'>('login');
   const [products, setProducts] = useState<Product[]>([]);
   const [supermarkets, setSupermarkets] = useState<Supermarket[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -728,6 +729,24 @@ function App() {
                   products={products}
                   supermarkets={supermarkets}
                 />
+              )}
+
+              {currentView === 'suppliers' && (
+                <Suppliers />
+              )}
+
+              {currentView === 'purchase-orders' && (
+                <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-rose-200 p-8">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-4">Purchase Orders</h2>
+                  <p className="text-gray-600">Minimal placeholder. I can wire CRUD UI once backend endpoints are active.</p>
+                </div>
+              )}
+
+              {currentView === 'purchasing-reports' && (
+                <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-rose-200 p-8">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-4">Purchasing Reports</h2>
+                  <p className="text-gray-600">Minimal placeholder for supplier spend, lead time, and order history reports.</p>
+                </div>
               )}
 
               {currentView === 'settings' && (

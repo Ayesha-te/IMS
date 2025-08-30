@@ -79,6 +79,22 @@ export const API_ENDPOINTS = {
   
   // Notifications
   NOTIFICATIONS: `${BASE_URL}/api/notifications/`,
+
+  // Purchasing (Suppliers, Supplier-Product mapping, Purchase Orders)
+  PURCHASING: {
+    // Supplier-Product relations and pricing
+    SUPPLIER_PRODUCTS: `${BASE_URL}/api/purchasing/supplier-products/`,
+    SUPPLIER_PRODUCT_DETAIL: (id: number) => `${BASE_URL}/api/purchasing/supplier-products/${id}/`,
+    BEST_SUPPLIER: (productId: string, quantity: number) => `${BASE_URL}/api/purchasing/best-supplier/?product=${productId}&qty=${quantity}`,
+
+    // Purchase Orders
+    PURCHASE_ORDERS: `${BASE_URL}/api/purchasing/purchase-orders/`,
+    PURCHASE_ORDER_DETAIL: (id: number) => `${BASE_URL}/api/purchasing/purchase-orders/${id}/`,
+    PURCHASE_ORDER_RECEIVE: (id: number) => `${BASE_URL}/api/purchasing/purchase-orders/${id}/receive/`,
+    PURCHASE_ORDER_PDF: (id: number) => `${BASE_URL}/api/purchasing/purchase-orders/${id}/pdf/`,
+    PURCHASE_ORDER_EMAIL: (id: number) => `${BASE_URL}/api/purchasing/purchase-orders/${id}/email/`,
+    PURCHASE_ORDER_STATS: `${BASE_URL}/api/purchasing/purchase-orders/stats/`,
+  },
 };
 
 // HTTP methods helper
@@ -485,6 +501,27 @@ export class SupplierService {
       token: token || AuthService.getToken() || undefined
     });
   }
+
+  static async getSupplier(id: number, token?: string) {
+    return apiRequest(API_ENDPOINTS.INVENTORY.SUPPLIER_DETAIL(id), {
+      token: token || AuthService.getToken() || undefined
+    });
+  }
+
+  static async updateSupplier(id: number, supplierData: any, token?: string) {
+    return apiRequest(API_ENDPOINTS.INVENTORY.SUPPLIER_DETAIL(id), {
+      method: HTTP_METHODS.PATCH,
+      body: supplierData,
+      token: token || AuthService.getToken() || undefined
+    });
+  }
+
+  static async deleteSupplier(id: number, token?: string) {
+    return apiRequest(API_ENDPOINTS.INVENTORY.SUPPLIER_DETAIL(id), {
+      method: HTTP_METHODS.DELETE,
+      token: token || AuthService.getToken() || undefined
+    });
+  }
 }
 
 // Supermarket service
@@ -579,6 +616,105 @@ export class BarcodeService {
       method: HTTP_METHODS.POST,
       body: { product_ids: productIds },
       token: token || AuthService.getToken() || undefined
+    });
+  }
+}
+
+// Purchasing services
+export class SupplierProductService {
+  static async list(params?: { supplier?: number|string; product?: string; }, token?: string) {
+    const url = new URL(API_ENDPOINTS.PURCHASING.SUPPLIER_PRODUCTS);
+    if (params?.supplier) url.searchParams.set('supplier', String(params.supplier));
+    if (params?.product) url.searchParams.set('product', String(params.product));
+    return apiRequest(url.toString(), { token: token || AuthService.getToken() || undefined });
+  }
+
+  static async create(data: { supplier: number; product: string; supplier_price: number; available_quantity?: number; }, token?: string) {
+    return apiRequest(API_ENDPOINTS.PURCHASING.SUPPLIER_PRODUCTS, {
+      method: HTTP_METHODS.POST,
+      body: data,
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+
+  static async update(id: number, data: Partial<{ supplier: number; product: string; supplier_price: number; available_quantity: number; }>, token?: string) {
+    return apiRequest(API_ENDPOINTS.PURCHASING.SUPPLIER_PRODUCT_DETAIL(id), {
+      method: HTTP_METHODS.PATCH,
+      body: data,
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+
+  static async remove(id: number, token?: string) {
+    return apiRequest(API_ENDPOINTS.PURCHASING.SUPPLIER_PRODUCT_DETAIL(id), {
+      method: HTTP_METHODS.DELETE,
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+
+  static async bestSupplier(productId: string, quantity: number, token?: string) {
+    return apiRequest(API_ENDPOINTS.PURCHASING.BEST_SUPPLIER(productId, quantity), {
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+}
+
+export class PurchaseOrderService {
+  static async list(token?: string) {
+    return apiRequest(API_ENDPOINTS.PURCHASING.PURCHASE_ORDERS, {
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+
+  static async create(data: {
+    supplier: number;
+    items: { product: string; quantity: number; unit_price: number }[];
+    notes?: string;
+  }, token?: string) {
+    return apiRequest(API_ENDPOINTS.PURCHASING.PURCHASE_ORDERS, {
+      method: HTTP_METHODS.POST,
+      body: data,
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+
+  static async get(id: number, token?: string) {
+    return apiRequest(API_ENDPOINTS.PURCHASING.PURCHASE_ORDER_DETAIL(id), {
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+
+  static async update(id: number, data: any, token?: string) {
+    return apiRequest(API_ENDPOINTS.PURCHASING.PURCHASE_ORDER_DETAIL(id), {
+      method: HTTP_METHODS.PATCH,
+      body: data,
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+
+  static async markReceived(id: number, token?: string) {
+    return apiRequest(API_ENDPOINTS.PURCHASING.PURCHASE_ORDER_RECEIVE(id), {
+      method: HTTP_METHODS.POST,
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+
+  static async pdf(id: number, token?: string) {
+    return apiRequest(API_ENDPOINTS.PURCHASING.PURCHASE_ORDER_PDF(id), {
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+
+  static async email(id: number, token?: string) {
+    return apiRequest(API_ENDPOINTS.PURCHASING.PURCHASE_ORDER_EMAIL(id), {
+      method: HTTP_METHODS.POST,
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+
+  static async stats(token?: string) {
+    return apiRequest(API_ENDPOINTS.PURCHASING.PURCHASE_ORDER_STATS, {
+      token: token || AuthService.getToken() || undefined,
     });
   }
 }
