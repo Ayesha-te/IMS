@@ -338,7 +338,7 @@ const AppContent: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                  🕌 Halal Inventory Management System
+                  🕌  Inventory Management System
                 </h1>
                 <p className="text-gray-600">
                   {isAuthenticated 
