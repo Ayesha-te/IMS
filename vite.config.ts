@@ -1,13 +1,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// Keep Monaco strictly client-side by avoiding optimizeDeps/ssr processing
 export default defineConfig({
   plugins: [react()],
+  // Do not force include Monaco in optimizeDeps; let it load dynamically in the browser
   optimizeDeps: {
-    include: ['@monaco-editor/react']
-  },
-  ssr: {
-    noExternal: ['@monaco-editor/react', 'monaco-editor']
+    exclude: ['@monaco-editor/react', 'monaco-editor']
   },
   build: {
     commonjsOptions: {
