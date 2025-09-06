@@ -1,21 +1,17 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react()],
   optimizeDeps: {
-    include: ['@monaco-editor/react', 'monaco-editor'], // pre-bundle Monaco
+    include: ['@monaco-editor/react']
   },
-  resolve: {
-    mainFields: ['module', 'browser', 'main'],
+  ssr: {
+    noExternal: ['@monaco-editor/react', 'monaco-editor']
   },
   build: {
     commonjsOptions: {
-      include: [/node_modules/, /@monaco-editor/], // handle CommonJS
-    },
-  },
-  ssr: {
-    noExternal: ['@monaco-editor/react', 'monaco-editor'], // Vercel SSR compatibility
-  },
+      include: [/node_modules/]
+    }
+  }
 });

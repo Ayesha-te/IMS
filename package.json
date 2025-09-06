@@ -3,14 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
- "scripts": {
-  "dev": "vite",
-  "build": "node ./node_modules/vite/bin/vite.js build",
-  "preview": "vite preview",
-  "lint": "eslint ."
-},
-
-
+  "scripts": {
+    "dev": "vite",
+    "build": "node node_modules/vite/bin/vite.js build",
+    "preview": "vite preview",
+    "lint": "eslint ."
+  },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
     "@tailwindcss/vite": "^4.1.11",
@@ -34,7 +32,6 @@
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.7.0",
-    "esbuild": "0.25.8",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
