@@ -1,7 +1,3 @@
 {
-  "build": {
-    "env": {
-      "NPM_CONFIG_CACHE": "false"
-    }
-  }
+  "buildCommand": "npm install --force && npm run build"
 }
