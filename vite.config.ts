@@ -9,11 +9,15 @@ export default defineConfig({
   },
   plugins: [react(), tailwindcss()],
   optimizeDeps: {
-    include: ["@monaco-editor/react"]
+    include: ["@monaco-editor/react", "monaco-editor"]
+  },
+  resolve: {
+    mainFields: ['module', 'browser', 'main']
   },
   build: {
     commonjsOptions: {
-      include: [/node_modules/]
+      // Only apply CommonJS handling to monaco-editor
+      include: [/node_modules\/monaco-editor\//]
     }
   }
 });
