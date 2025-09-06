@@ -19,5 +19,8 @@ export default defineConfig({
       // Only apply CommonJS handling to monaco-editor
       include: [/node_modules\/monaco-editor\//]
     }
+  },
+  ssr: {
+    noExternal: ['@monaco-editor/react', 'monaco-editor']
   }
 });
