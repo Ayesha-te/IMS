@@ -8,4 +8,7 @@ export default defineConfig({
     host: true
   },
   plugins: [react(), tailwindcss()],
+  optimizeDeps: {
+    include: ["@monaco-editor/react"]
+  }
 });
