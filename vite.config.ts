@@ -8,9 +8,10 @@ export default defineConfig({
     host: true
   },
   plugins: [react(), tailwindcss()],
-  // Do not force prebundling of Monaco packages in production build to avoid resolver issues
-  // optimizeDeps only affects dev; leaving it empty prevents unnecessary resolution in CI
-  optimizeDeps: {},
+  // Ensure Monaco is pre-bundled for Vite compatibility
+  optimizeDeps: {
+    include: ['@monaco-editor/react']
+  },
   resolve: {
     mainFields: ['module', 'browser', 'main']
   },
