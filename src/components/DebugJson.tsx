@@ -1,26 +1,21 @@
 import React from 'react';
-import JsonView from 'react18-json-view';
-import 'react18-json-view/src/style.css';
 
 /**
- * Simple JSON viewer component using react18-json-view
- * Usage: <DebugJson data={yourData} collapsed={false} />
+ * Simple JSON viewer without external dependencies.
+ * Usage: <DebugJson data={yourData} />
  */
 export interface DebugJsonProps {
   data: unknown;
-  collapsed?: boolean | number; // false, true, or level number
+  collapsed?: boolean | number; // kept for backward compatibility (unused)
   className?: string;
 }
 
-export const DebugJson: React.FC<DebugJsonProps> = ({ data, collapsed = false, className }) => {
+export const DebugJson: React.FC<DebugJsonProps> = ({ data, className }) => {
   return (
     <div className={className ?? 'p-4 bg-white rounded border'}>
-      <JsonView
-        src={data as any}
-        collapsed={collapsed as any}
-        displayDataTypes={false}
-        enableClipboard={true}
-      />
+      <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>
+        {JSON.stringify(data, null, 2)}
+      </pre>
     </div>
   );
 };
