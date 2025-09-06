@@ -10,16 +10,16 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   // Ensure Monaco is pre-bundled for Vite compatibility
   optimizeDeps: {
-    include: ['@monaco-editor/react']
+    include: ['@monaco-editor/react'],
   },
   resolve: {
     mainFields: ['module', 'browser', 'main']
   },
   build: {
     commonjsOptions: {
-      // Only apply CommonJS handling to monaco-editor when used
-      include: [/node_modules\/monaco-editor\//]
-    }
+      // Apply CommonJS handling to all node_modules for broad compatibility
+      include: [/node_modules/],
+    },
   },
   // Ensure SSR bundling when imported at runtime
   ssr: {
