@@ -1,8 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { OrdersService, SupermarketService, WarehouseService, ProductsApi } from '../services/apiService';
-import Editor from '@monaco-editor/react';
-import JsonView from 'react18-json-view';
-import 'react18-json-view/src/style.css';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 
 interface OrderItem { id: string; product: string; product_name?: string; quantity: number; unit_price: number; total_price: number }
