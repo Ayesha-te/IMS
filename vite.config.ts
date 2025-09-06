@@ -8,18 +8,19 @@ export default defineConfig({
     host: true
   },
   plugins: [react(), tailwindcss()],
-  optimizeDeps: {
-    include: ["@monaco-editor/react", "monaco-editor"]
-  },
+  // Do not force prebundling of Monaco packages in production build to avoid resolver issues
+  // optimizeDeps only affects dev; leaving it empty prevents unnecessary resolution in CI
+  optimizeDeps: {},
   resolve: {
     mainFields: ['module', 'browser', 'main']
   },
   build: {
     commonjsOptions: {
-      // Only apply CommonJS handling to monaco-editor
+      // Only apply CommonJS handling to monaco-editor when used
       include: [/node_modules\/monaco-editor\//]
     }
   },
+  // Ensure SSR bundling when imported at runtime
   ssr: {
     noExternal: ['@monaco-editor/react', 'monaco-editor']
   }
