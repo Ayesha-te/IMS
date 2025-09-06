@@ -96,6 +96,7 @@ export const getNavigationItems = (storeContext: StoreContext, isAuthenticated: 
 
   // Common items for both single and multi-store
   baseItems.push(
+    { id: 'orders', label: 'Orders', icon: '📦' },
     { id: 'barcode-demo', label: 'Barcodes & Tickets', icon: '🏷️' },
     { id: 'scanner', label: 'Scanner', icon: '📱' },
     { id: 'pos-sync', label: 'POS Sync', icon: '🔄' },

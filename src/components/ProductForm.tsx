@@ -12,9 +12,10 @@ interface ProductFormProps {
   onCancel: () => void;
   supermarketId: string;
   userStores?: Supermarket[];
+  supplierOptions?: { id: number|string; name: string }[]; // dropdown options
 }
 
-const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiStoreSave, initialProduct, onCancel, supermarketId, userStores = [] }) => {
+const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiStoreSave, initialProduct, onCancel, supermarketId, userStores = [], supplierOptions = [] }) => {
   const [currentView, setCurrentView] = useState<'options' | 'manual' | 'excel' | 'image'>('options');
   const [addToAllStores, setAddToAllStores] = useState(false);
 
@@ -32,9 +33,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
     description: '',
     brand: '',
     weight: '',
-    origin: '',
-    halalCertified: true,
-    halalCertificationBody: ''
+    origin: ''
   });
 
   useEffect(() => {
@@ -53,9 +52,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
         description: initialProduct.description || '',
         brand: initialProduct.brand || '',
         weight: initialProduct.weight || '',
-        origin: initialProduct.origin || '',
-        halalCertified: initialProduct.halalCertified,
-        halalCertificationBody: initialProduct.halalCertificationBody || ''
+        origin: initialProduct.origin || ''
       });
     }
   }, [initialProduct]);
@@ -360,8 +357,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
               <label htmlFor="supplier" className="block text-sm font-medium text-gray-700 mb-2">
                 Supplier *
               </label>
-              <input
-                type="text"
+              <select
                 id="supplier"
                 name="supplier"
                 value={formData.supplier}
@@ -369,8 +365,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
                 required
                 aria-invalid={!!fieldErrors.supplier}
                 className={`w-full px-4 py-3 border ${fieldErrors.supplier ? 'border-red-300' : 'border-gray-200'} rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80`}
-                placeholder="Enter supplier name"
-              />
+              >
+                <option value="">Select supplier</option>
+                {supplierOptions.map(opt => (
+                  <option key={String(opt.id)} value={String(opt.name)}>{opt.name}</option>
+                ))}
+              </select>
               {fieldErrors.supplier && (
                 <p className="mt-1 text-xs text-red-600">{fieldErrors.supplier}</p>
               )}

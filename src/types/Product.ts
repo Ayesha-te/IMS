@@ -15,8 +15,8 @@ interface ProductInterface {
   origin?: string;
   imageUrl?: string;
   barcode?: string;
-  halalCertified: boolean;
-  halalCertificationBody?: string;
+  // halalCertified: boolean;
+  // halalCertificationBody?: string;
   costPrice?: number;
   sellingPrice?: number;
   minStockLevel?: number;

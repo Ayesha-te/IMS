@@ -94,6 +94,20 @@ export const API_ENDPOINTS = {
     PURCHASE_ORDER_PDF: (id: number) => `${BASE_URL}/api/purchasing/purchase-orders/${id}/pdf/`,
     PURCHASE_ORDER_EMAIL: (id: number) => `${BASE_URL}/api/purchasing/purchase-orders/${id}/email/`,
     PURCHASE_ORDER_STATS: `${BASE_URL}/api/purchasing/purchase-orders/stats/`,
+    PURCHASE_ORDER_INFO: `${BASE_URL}/api/purchasing/purchase-orders/info/`,
+  },
+
+  // Orders (Customer orders)
+  ORDERS: {
+    LIST_CREATE: `${BASE_URL}/api/orders/`,
+    DETAIL: (id: string) => `${BASE_URL}/api/orders/${id}/`,
+    ASSIGN_WAREHOUSE: (id: string) => `${BASE_URL}/api/orders/${id}/assign-warehouse/`,
+    GENERATE_LABEL: (id: string) => `${BASE_URL}/api/orders/${id}/generate-label/`,
+    IMPORT: `${BASE_URL}/api/orders/import/`,
+    WAREHOUSES: `${BASE_URL}/api/orders/warehouses/`,
+    WAREHOUSE_DETAIL: (id: string) => `${BASE_URL}/api/orders/warehouses/${id}/`,
+    RMA: `${BASE_URL}/api/orders/rma/`,
+    RMA_DETAIL: (id: string) => `${BASE_URL}/api/orders/rma/${id}/`,
   },
 };
 
@@ -203,6 +217,15 @@ export const apiRequest = async (url: string, config: RequestConfig = {}) => {
     } else {
       const text = await response.text();
       if (!response.ok) {
+        // Improve DX when server returns an HTML error page (e.g., Django debug page)
+        const isHtml = (contentType && contentType.includes('text/html')) || /^\s*<!DOCTYPE html/i.test(text || '');
+        if (isHtml) {
+          // Try to extract a concise title from the HTML
+          const titleMatch = text.match(/<title>([^<]+)<\/title>/i);
+          const concise = titleMatch && titleMatch[1] ? titleMatch[1].trim() : null;
+          const fallback = `Server error (HTML). Status ${response.status}. Please check backend logs.`;
+          throw new Error(concise || fallback);
+        }
         throw new Error(text || `HTTP error! status: ${response.status}`);
       }
       return text;
@@ -668,8 +691,14 @@ export class PurchaseOrderService {
 
   static async create(data: {
     supplier: number;
-    items: { product: string; quantity: number; unit_price: number }[];
+    supermarket?: string; // optional id
+    supermarket_text?: string; // optional name to resolve on backend
+    po_number?: string;
+    expected_delivery_date?: string;
+    payment_terms?: string;
+    buyer_name?: string;
     notes?: string;
+    items: { product?: string; product_text?: string; quantity: number; unit_price: number }[];
   }, token?: string) {
     return apiRequest(API_ENDPOINTS.PURCHASING.PURCHASE_ORDERS, {
       method: HTTP_METHODS.POST,
@@ -714,6 +743,182 @@ export class PurchaseOrderService {
 
   static async stats(token?: string) {
     return apiRequest(API_ENDPOINTS.PURCHASING.PURCHASE_ORDER_STATS, {
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+
+  static async info() {
+    // Public informational endpoint; do not attach auth header
+    return apiRequest(API_ENDPOINTS.PURCHASING.PURCHASE_ORDER_INFO, {
+      useAuth: false,
+    });
+  }
+}
+
+// Orders service
+export class POSIntegrationService {
+  static async listSystems(token?: string) {
+    return apiRequest(`${BASE_URL}/api/pos/systems/`, { token: token || AuthService.getToken() || undefined });
+  }
+  static async listIntegrations(token?: string) {
+    return apiRequest(`${BASE_URL}/api/pos/integrations/`, { token: token || AuthService.getToken() || undefined });
+  }
+  static async createIntegration(body: any, token?: string) {
+    return apiRequest(`${BASE_URL}/api/pos/integrations/create/`, {
+      method: HTTP_METHODS.POST,
+      body,
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+  static async updateIntegration(id: number, body: any, token?: string) {
+    return apiRequest(`${BASE_URL}/api/pos/integrations/${id}/`, {
+      method: HTTP_METHODS.PATCH,
+      body,
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+  static async deleteIntegration(id: number, token?: string) {
+    return apiRequest(`${BASE_URL}/api/pos/integrations/${id}/`, {
+      method: HTTP_METHODS.DELETE,
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+  static async triggerSync(id: number, sync_type: 'FULL'|'INCREMENTAL'|'PRODUCT'|'INVENTORY'|'PRICE' = 'FULL', token?: string) {
+    return apiRequest(`${BASE_URL}/api/pos/integrations/${id}/sync/`, {
+      method: HTTP_METHODS.POST,
+      body: { sync_type },
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+  static async testConnection(id: number, token?: string) {
+    return apiRequest(`${BASE_URL}/api/pos/integrations/${id}/test/`, {
+      method: HTTP_METHODS.POST,
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+  static async logs(id: number, token?: string) {
+    return apiRequest(`${BASE_URL}/api/pos/integrations/${id}/logs/`, { token: token || AuthService.getToken() || undefined });
+  }
+}
+
+export class OrdersService {
+  static async list(params?: { status?: string; supermarket?: string; channel?: string; courier?: string; payment_status?: string }, token?: string) {
+    const url = new URL(API_ENDPOINTS.ORDERS.LIST_CREATE);
+    if (params?.status) url.searchParams.set('status', params.status);
+    if (params?.supermarket) url.searchParams.set('supermarket', params.supermarket);
+    if (params?.channel) url.searchParams.set('channel', params.channel);
+    if (params?.courier) url.searchParams.set('courier', params.courier);
+    if (params?.payment_status) url.searchParams.set('payment_status', params.payment_status);
+    return apiRequest(url.toString(), { token: token || AuthService.getToken() || undefined });
+  }
+
+  static async create(data: {
+    supermarket: string;
+    channel?: 'SHOPIFY'|'AMAZON'|'DARAZ'|'POS'|'MANUAL'|'WEBSITE';
+    external_order_id?: string;
+    customer_name?: string;
+    customer_email?: string;
+    customer_phone?: string;
+    ship_name?: string;
+    ship_phone?: string;
+    ship_address_line1?: string;
+    ship_address_line2?: string;
+    ship_city?: string;
+    ship_postcode?: string;
+    ship_country?: string;
+    payment_method?: 'COD'|'PREPAID';
+    status?: string;
+    notes?: string;
+    raw_payload?: any;
+    items?: { product: string; quantity: number; unit_price: number }[];
+  }, token?: string) {
+    return apiRequest(API_ENDPOINTS.ORDERS.LIST_CREATE, {
+      method: HTTP_METHODS.POST,
+      body: data,
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+
+  static async get(id: string, token?: string) {
+    return apiRequest(API_ENDPOINTS.ORDERS.DETAIL(id), {
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+
+  static async update(id: string, data: any, token?: string) {
+    return apiRequest(API_ENDPOINTS.ORDERS.DETAIL(id), {
+      method: HTTP_METHODS.PATCH,
+      body: data,
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+
+  static async remove(id: string, token?: string) {
+    return apiRequest(API_ENDPOINTS.ORDERS.DETAIL(id), {
+      method: HTTP_METHODS.DELETE,
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+
+  static async assignWarehouse(id: string, warehouseId: string, token?: string) {
+    return apiRequest(API_ENDPOINTS.ORDERS.ASSIGN_WAREHOUSE(id), {
+      method: HTTP_METHODS.POST,
+      body: { warehouse: warehouseId },
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+
+  static async generateLabel(id: string, courier: 'DPD'|'YODEL'|'CITYSPRINT'|'COLLECTPLUS'|'TUFFNELLS', token?: string) {
+    return apiRequest(API_ENDPOINTS.ORDERS.GENERATE_LABEL(id), {
+      method: HTTP_METHODS.POST,
+      body: { courier },
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+
+  static async import(data: { channel: 'SHOPIFY'|'AMAZON'|'DARAZ'|'POS'|'MANUAL'|'WEBSITE'; supermarket: string; orders: any[] }, token?: string) {
+    return apiRequest(API_ENDPOINTS.ORDERS.IMPORT, {
+      method: HTTP_METHODS.POST,
+      body: data,
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+}
+
+export class WarehouseService {
+  static async list(params?: { supermarket?: string }, token?: string) {
+    const url = new URL(API_ENDPOINTS.ORDERS.WAREHOUSES);
+    if (params?.supermarket) url.searchParams.set('supermarket', params.supermarket);
+    return apiRequest(url.toString(), { token: token || AuthService.getToken() || undefined });
+  }
+  static async create(data: { supermarket: string; name: string; address_line1: string; city: string; postcode: string; country?: string; }, token?: string) {
+    return apiRequest(API_ENDPOINTS.ORDERS.WAREHOUSES, {
+      method: HTTP_METHODS.POST,
+      body: data,
+      token: token || AuthService.getToken() || undefined,
+    });
+  }
+}
+
+// Lightweight product list API for dropdowns
+export class ProductsApi {
+  static async list(params?: { supermarket?: string; search?: string; limit?: number }, token?: string) {
+    const url = new URL(API_ENDPOINTS.INVENTORY.PRODUCTS);
+    if (params?.supermarket) url.searchParams.set('supermarket', params.supermarket);
+    if (params?.search) url.searchParams.set('search', params.search);
+    if (params?.limit) url.searchParams.set('limit', String(params.limit));
+    return apiRequest(url.toString(), { token: token || AuthService.getToken() || undefined });
+  }
+}
+
+export class RMAService {
+  static async list(token?: string) {
+    return apiRequest(API_ENDPOINTS.ORDERS.RMA, { token: token || AuthService.getToken() || undefined });
+  }
+  static async create(data: { order: string; reason?: string; refund_amount?: number; restock?: boolean; items?: { order_item: string; quantity?: number; condition?: string }[] }, token?: string) {
+    return apiRequest(API_ENDPOINTS.ORDERS.RMA, {
+      method: HTTP_METHODS.POST,
+      body: data,
       token: token || AuthService.getToken() || undefined,
     });
   }
@@ -811,7 +1016,7 @@ export class MappingService {
         const newSupermarket = await SupermarketService.createSupermarketWithDefaults({
           name: name,
           address: 'Default Address',
-          phone: '000-000-0000',
+          phone: '+10000000000', // Use valid E.164 format to satisfy backend validation
           email: `${name.replace(/\s+/g, '').toLowerCase()}@default.com`,
           description: `Auto-created supermarket: ${name}`,
         }, token);

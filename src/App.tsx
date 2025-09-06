@@ -19,6 +19,7 @@ import MyStores from './components/MyStores';
 import POSSync from './components/POSSync';
 import DashboardGraphs from './components/DashboardGraphs';
 import BarcodeTicketManager from './components/BarcodeTicketManager';
+import Orders from './components/Orders';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { useProducts, useCategories, useSuppliers, useSupermarkets } from './hooks/useApi';
 import { ProductService, CategoryService, SupplierService, SupermarketService, AuthService } from './services/apiService';
@@ -29,7 +30,7 @@ import type { Product, Supermarket, User } from './types/Product';
 
 
 function App() {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'supermarket-overview' | 'scanner' | 'add-product' | 'stores' | 'catalog' | 'analytics' | 'pos-sync' | 'settings' | 'barcode-demo' | 'suppliers' | 'purchase-orders' | 'purchasing-reports' | 'login' | 'signup'>('login');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'supermarket-overview' | 'scanner' | 'add-product' | 'stores' | 'catalog' | 'analytics' | 'pos-sync' | 'settings' | 'barcode-demo' | 'suppliers' | 'purchase-orders' | 'purchasing-reports' | 'orders' | 'login' | 'signup'>('login');
   const [products, setProducts] = useState<Product[]>([]);
   const [supermarkets, setSupermarkets] = useState<Supermarket[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -747,6 +748,10 @@ function App() {
                   <h2 className="text-2xl font-bold text-gray-800 mb-4">Purchasing Reports</h2>
                   <p className="text-gray-600">Minimal placeholder for supplier spend, lead time, and order history reports.</p>
                 </div>
+              )}
+
+              {currentView === 'orders' && (
+                <Orders />
               )}
 
               {currentView === 'settings' && (

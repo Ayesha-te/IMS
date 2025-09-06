@@ -16,13 +16,14 @@ import DashboardGraphs from './components/DashboardGraphs';
 import BarcodeTicketManager from './components/BarcodeTicketManager';
 import { STORAGE_KEYS } from './constants/storageKeys';
 import Suppliers from './components/Suppliers';
+import Orders from './components/Orders';
 
 import type { Product, User } from './types/Product';
 
 // Main App Content Component
 const AppContent: React.FC = () => {
   const { user, isAuthenticated, isLoading, login, logout, register } = useAuth();
-  const [currentView, setCurrentView] = useState<'dashboard' | 'scanner' | 'add-product' | 'stores' | 'catalog' | 'analytics' | 'pos-sync' | 'settings' | 'barcode-demo' | 'suppliers' | 'login' | 'signup'>('login');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'scanner' | 'add-product' | 'stores' | 'catalog' | 'analytics' | 'pos-sync' | 'settings' | 'barcode-demo' | 'suppliers' | 'orders' | 'login' | 'signup'>('login');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedForBT, setSelectedForBT] = useState<string[]>([]);
 
@@ -152,49 +153,38 @@ const AppContent: React.FC = () => {
     console.log("DEBUG suppliers type:", typeof suppliers);
     console.log("DEBUG suppliers is array:", Array.isArray(suppliers));
     
-    // Find or create category
+    // Validate category by name and map to ID (auto-create if missing)
     if (productData.category) {
-      // Ensure categories is an array
       const categoriesArray = Array.isArray(categories) ? categories : Object.values(categories || {});
-      const existingCategory = categoriesArray.find(cat => cat.name === productData.category);
-      
-      if (existingCategory) {
+      const normalize = (v: any) => String(v || '').trim().toLowerCase();
+      const getCatName = (c: any) => (typeof c === 'string' ? c : c?.name);
+      const existingCategory = categoriesArray.find((cat: any) => normalize(getCatName(cat)) === normalize(productData.category));
+      if (existingCategory?.id) {
         categoryId = existingCategory.id;
       } else {
-        // Create new category
         try {
-          const newCategory = await CategoryService.createCategory({
-            name: productData.category,
-            description: `Auto-created category: ${productData.category}`
-          });
-          categoryId = newCategory.id;
-        } catch (error) {
-          console.warn('Failed to create category:', error);
+          const created = await CategoryService.createCategory({ name: productData.category });
+          categoryId = created?.id ?? created?.pk ?? created?.uuid ?? null;
+        } catch (e) {
+          throw new Error(`Category not found and could not be created: ${productData.category}`);
         }
       }
     }
     
-    // Find or create supplier
+    // Validate supplier by name and map to ID (auto-create if missing)
     if (productData.supplier) {
-      // Ensure suppliers is an array
       const suppliersArray = Array.isArray(suppliers) ? suppliers : Object.values(suppliers || {});
-      const existingSupplier = suppliersArray.find(sup => sup.name === productData.supplier);
-      
-      if (existingSupplier) {
+      const normalize = (v: any) => String(v || '').trim().toLowerCase();
+      const getSupName = (s: any) => (typeof s === 'string' ? s : s?.name);
+      const existingSupplier = suppliersArray.find((sup: any) => normalize(getSupName(sup)) === normalize(productData.supplier));
+      if (existingSupplier?.id) {
         supplierId = existingSupplier.id;
       } else {
-        // Create new supplier
         try {
-          const newSupplier = await SupplierService.createSupplier({
-            name: productData.supplier,
-            contact_person: '',
-            email: '',
-            phone: '',
-            address: ''
-          });
-          supplierId = newSupplier.id;
-        } catch (error) {
-          console.warn('Failed to create supplier:', error);
+          const created = await SupplierService.createSupplier({ name: productData.supplier });
+          supplierId = created?.id ?? created?.pk ?? created?.uuid ?? null;
+        } catch (e) {
+          throw new Error(`Supplier not found and could not be created: ${productData.supplier}`);
         }
       }
     }
@@ -276,8 +266,8 @@ const AppContent: React.FC = () => {
       origin: productData.origin || '',
       expiry_date: productData.expiryDate,
       location: productData.location || '',
-      halal_certified: productData.halalCertified || false,
-      halal_certification_body: productData.halalCertificationBody || '',
+      // halal_certified: productData.halalCertified || false,
+      // halal_certification_body: productData.halalCertificationBody || '',
       image_url: productData.imageUrl || '',
       is_active: true
     };
@@ -300,6 +290,7 @@ const AppContent: React.FC = () => {
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'catalog', label: 'Products', icon: '📦' },
     { id: 'add-product', label: 'Add Products', icon: '➕' },
+    { id: 'orders', label: 'Orders', icon: '📦' },
     { id: 'barcode-demo', label: 'Barcodes & Tickets', icon: '🏷️' },
     { id: 'scanner', label: 'Scanner', icon: '📱' },
     { id: 'stores', label: 'My Stores', icon: '🏪' },
@@ -308,6 +299,9 @@ const AppContent: React.FC = () => {
     { id: 'suppliers', label: 'Suppliers', icon: '🤝' },
     { id: 'settings', label: 'Settings', icon: '⚙️' }
   ] : [];
+  
+  // Small helper to allow in-app links to switch tabs
+  const navigate = (viewId: typeof currentView) => setCurrentView(viewId);
 
   // Determine selected supermarket: saved selection -> first available
   const savedSupermarketId = (typeof window !== 'undefined') ? localStorage.getItem(STORAGE_KEYS.CURRENT_SUPERMARKET_ID) : null;
@@ -492,6 +486,7 @@ const AppContent: React.FC = () => {
                     initialProduct={editingProduct}
                     supermarketId={selectedSupermarket?.id?.toString() || ''}
                     userStores={supermarkets || []}
+                    supplierOptions={(suppliers || []).map((s: any) => ({ id: s.id, name: s.name }))}
                     onCancel={() => {
                       setCurrentView('dashboard');
                       setEditingProduct(null);
@@ -556,6 +551,12 @@ const AppContent: React.FC = () => {
               {currentView === 'suppliers' && (
                 <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-rose-200 p-8">
                   <Suppliers />
+                </div>
+              )}
+
+              {currentView === 'orders' && (
+                <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-rose-200 p-8">
+                  <Orders />
                 </div>
               )}
 
