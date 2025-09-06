@@ -10,5 +10,10 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   optimizeDeps: {
     include: ["@monaco-editor/react"]
+  },
+  build: {
+    commonjsOptions: {
+      include: [/node_modules/]
+    }
   }
 });
