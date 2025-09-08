@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import JsonView from '@microlink/react-json-view';
 import { OrdersService, SupermarketService, WarehouseService, ProductsApi } from '../services/apiService';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 
@@ -462,7 +461,9 @@ export default function Orders() {
                   </div>
                   {impOrdersError && <div className="text-xs text-red-600 mt-1">{impOrdersError}</div>}
                   <div className="mt-2">
-                    <JsonView src={(() => { try { return JSON.parse(impOrdersText || '[]'); } catch { return []; } })()} collapsed={1} theme="github" />
+                    <pre className="text-xs bg-gray-50 p-2 rounded overflow-auto max-h-48">
+                      {(() => { try { return JSON.stringify(JSON.parse(impOrdersText || '[]'), null, 2); } catch { return '[]'; } })()}
+                    </pre>
                   </div>
                 </div>
                 <button onClick={onBulkImport} disabled={!supermarketId || !impOrdersValid} className={`px-4 py-2 rounded text-white ${(!supermarketId || !impOrdersValid) ? 'bg-indigo-300 cursor-not-allowed' : 'bg-indigo-600'}`}>Import Orders</button>
