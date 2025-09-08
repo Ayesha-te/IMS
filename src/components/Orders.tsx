@@ -1,6 +1,72 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import JsonView from '@microlink/react-json-view';
 import { OrdersService, SupermarketService, WarehouseService, ProductsApi } from '../services/apiService';
 import { CheckCircle, AlertCircle } from 'lucide-react';
+
+// Error boundary to prevent editor crashes from breaking the page (e.g., on Vercel)
+class EditorErrorBoundary extends React.Component<{ fallback: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(_error: any) {}
+  render() { return this.state.hasError ? this.props.fallback : (this.props.children as any); }
+}
+
+// Safe editor wrapper: dynamically loads Monaco on the client and falls back to a textarea otherwise
+interface SafeEditorProps {
+  height: string;
+  defaultLanguage: string;
+  value: string;
+  onChange: (val: string | undefined) => void;
+  options?: any;
+}
+const SafeEditor: React.FC<SafeEditorProps> = ({ height, defaultLanguage, value, onChange, options }) => {
+  // 1) Always declare hooks in same order
+  const [isClient, setIsClient] = React.useState(false);
+  const [MonacoComponent, setMonacoComponent] = React.useState<React.ComponentType<any> | null>(null);
+
+  // 2) Mark client after mount
+  React.useEffect(() => { setIsClient(true); }, []);
+
+  // 3) Dynamically import monaco after mount; if it fails, keep null (fallback used)
+  React.useEffect(() => {
+    let mounted = true;
+    import('@monaco-editor/react')
+      .then(mod => { if (mounted) setMonacoComponent(() => (mod.default as any)); })
+      .catch(() => { if (mounted) setMonacoComponent(null); });
+    return () => { mounted = false; };
+  }, []);
+
+  // 4) Fallback textarea (works in SSR/Vercel)
+  const fallback = (
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      style={{ height }}
+      className="w-full px-3 py-2 border rounded font-mono text-xs"
+      placeholder={`${defaultLanguage} editor`}
+    />
+  );
+
+  // 5) If not client or Monaco failed to load -> fallback
+  if (!isClient || !MonacoComponent) return fallback;
+
+  // 6) Render Monaco wrapped with error boundary
+  const MonacoEditor = MonacoComponent;
+  return (
+    <EditorErrorBoundary fallback={fallback}>
+      <MonacoEditor
+        height={height}
+        defaultLanguage={defaultLanguage}
+        value={value}
+        onChange={(val: string | undefined) => onChange(val || '')}
+        options={options}
+      />
+    </EditorErrorBoundary>
+  );
+};
 
 interface OrderItem { id: string; product: string; product_name?: string; quantity: number; unit_price: number; total_price: number }
 interface Order {
@@ -293,7 +359,7 @@ export default function Orders() {
                 </div>
                 <div>
                   <div className="border rounded overflow-hidden">
-                    <Editor
+                    <SafeEditor
                       height="180px"
                       defaultLanguage="json"
                       value={manItemsText}
@@ -378,7 +444,7 @@ export default function Orders() {
                 </div>
                 <div>
                   <div className="border rounded overflow-hidden">
-                    <Editor
+                    <SafeEditor
                       height="220px"
                       defaultLanguage="json"
                       value={impOrdersText}
