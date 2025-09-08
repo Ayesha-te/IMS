@@ -21,25 +21,9 @@ interface SafeEditorProps {
   onChange: (val: string | undefined) => void;
   options?: any;
 }
-const SafeEditor: React.FC<SafeEditorProps> = ({ height, defaultLanguage, value, onChange, options }) => {
-  // 1) Always declare hooks in same order
-  const [isClient, setIsClient] = React.useState(false);
-  const [MonacoComponent, setMonacoComponent] = React.useState<React.ComponentType<any> | null>(null);
-
-  // 2) Mark client after mount
-  React.useEffect(() => { setIsClient(true); }, []);
-
-  // 3) Dynamically import monaco after mount; if it fails, keep null (fallback used)
-  React.useEffect(() => {
-    let mounted = true;
-    import('@monaco-editor/react')
-      .then(mod => { if (mounted) setMonacoComponent(() => (mod.default as any)); })
-      .catch(() => { if (mounted) setMonacoComponent(null); });
-    return () => { mounted = false; };
-  }, []);
-
-  // 4) Fallback textarea (works in SSR/Vercel)
-  const fallback = (
+const SafeEditor: React.FC<SafeEditorProps> = ({ height, defaultLanguage, value, onChange }) => {
+  // Simple textarea editor to avoid SSR/build issues
+  return (
     <textarea
       value={value}
       onChange={(e) => onChange(e.target.value)}
@@ -47,23 +31,6 @@ const SafeEditor: React.FC<SafeEditorProps> = ({ height, defaultLanguage, value,
       className="w-full px-3 py-2 border rounded font-mono text-xs"
       placeholder={`${defaultLanguage} editor`}
     />
-  );
-
-  // 5) If not client or Monaco failed to load -> fallback
-  if (!isClient || !MonacoComponent) return fallback;
-
-  // 6) Render Monaco wrapped with error boundary
-  const MonacoEditor = MonacoComponent;
-  return (
-    <EditorErrorBoundary fallback={fallback}>
-      <MonacoEditor
-        height={height}
-        defaultLanguage={defaultLanguage}
-        value={value}
-        onChange={(val: string | undefined) => onChange(val || '')}
-        options={options}
-      />
-    </EditorErrorBoundary>
   );
 };
 
