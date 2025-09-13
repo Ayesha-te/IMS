@@ -22,6 +22,8 @@ import {
   validateStoreSelection 
 } from '../utils/storeUtils';
 import { STORAGE_KEYS } from '../constants/storageKeys';
+import { getSavedCurrencies, saveCurrency, getDefaultCurrency } from '../utils/currencyOptions';
+import { getSavedCategories, saveCategory } from '../utils/categoryOptions';
 
 interface AdaptiveProductFormProps {
   product?: Product | null;
@@ -40,6 +42,7 @@ interface FormData {
   description: string;
   category: string;
   supplier: string;
+  suppliers: string[];
   brand: string;
   barcode: string;
   sku: string;
@@ -85,6 +88,7 @@ const AdaptiveProductForm: React.FC<AdaptiveProductFormProps> = ({
     description: '',
     category: '',
     supplier: '',
+    suppliers: [],
     brand: '',
     barcode: '',
     sku: '',
@@ -115,6 +119,20 @@ const AdaptiveProductForm: React.FC<AdaptiveProductFormProps> = ({
   const [addToMultipleStores, setAddToMultipleStores] = useState(false);
   const [selectedStoresForNewProduct, setSelectedStoresForNewProduct] = useState<string[]>([]);
 
+  // Currency state for this form (persisted locally for reuse)
+  const [currencyOptions, setCurrencyOptions] = useState<string[]>([]);
+  const [currencyMode, setCurrencyMode] = useState<'select' | 'custom'>('select');
+  const [currency, setCurrency] = useState<string>('USD');
+  const defaultCurrency = getDefaultCurrency(storeContext.mainStore?.currency);
+
+  useEffect(() => {
+    const opts = getSavedCurrencies();
+    setCurrencyOptions(opts.length ? opts : (defaultCurrency ? [defaultCurrency] : []));
+    setCurrencyMode(opts.length ? 'select' : 'custom');
+    setCurrency(defaultCurrency || 'USD');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeContext.mainStore?.currency]);
+
   // Initialize form data when product changes
   useEffect(() => {
     if (product) {
@@ -123,6 +141,7 @@ const AdaptiveProductForm: React.FC<AdaptiveProductFormProps> = ({
         description: product.description || '',
         category: product.category || '',
         supplier: product.supplier || '',
+        suppliers: product.suppliers || (product.supplier ? [product.supplier] : []),
         brand: product.brand || '',
         barcode: product.barcode || '',
         sku: product.sku || '',
@@ -156,7 +175,8 @@ const AdaptiveProductForm: React.FC<AdaptiveProductFormProps> = ({
 
     if (!formData.name.trim()) newErrors.name = 'Product name is required';
     if (!formData.category.trim()) newErrors.category = 'Category is required';
-    if (!formData.supplier.trim()) newErrors.supplier = 'Supplier is required';
+    if ((formData.suppliers?.length ?? 0) === 0) newErrors.suppliers = 'Select at least one supplier';
+
     if (!formData.barcode.trim()) newErrors.barcode = 'Barcode is required';
     if (!formData.expiryDate) newErrors.expiryDate = 'Expiry date is required';
 
@@ -206,8 +226,14 @@ const AdaptiveProductForm: React.FC<AdaptiveProductFormProps> = ({
     setIsSubmitting(true);
     
     try {
+      const normalizedSuppliers = (formData.suppliers && formData.suppliers.length > 0)
+        ? formData.suppliers
+        : (formData.supplier ? [formData.supplier] : []);
+
       const productData = {
         ...formData,
+        supplier: normalizedSuppliers[0] || formData.supplier || '',
+        suppliers: normalizedSuppliers,
         costPrice: formData.costPrice ? Number(formData.costPrice) : undefined,
         sellingPrice: formData.sellingPrice ? Number(formData.sellingPrice) : undefined,
         price: Number(formData.price),
@@ -499,9 +525,31 @@ const AdaptiveProductForm: React.FC<AdaptiveProductFormProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category *
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Category *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const name = window.prompt('Enter new category name');
+                    if (!name || !name.trim()) return;
+                    const clean = name.trim();
+                    try {
+                      // Persist locally
+                      saveCategory(clean);
+                      const updated = getSavedCategories();
+                      // Update the form selection
+                      setFormData(prev => ({ ...prev, category: clean }));
+                      // Optionally, call backend create non-blocking
+                      try { (window as any).CategoryService?.createCategory?.({ name: clean }); } catch {}
+                    } catch {}
+                  }}
+                  className="text-sm text-green-600 hover:text-green-700 flex items-center gap-1"
+                >
+                  <Plus className="w-4 h-4" /> Add
+                </button>
+              </div>
               <select
                 value={formData.category}
                 onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
@@ -511,7 +559,7 @@ const AdaptiveProductForm: React.FC<AdaptiveProductFormProps> = ({
                 required
               >
                 <option value="">Select category</option>
-                {categories.map(category => (
+                {[...new Set([...(getSavedCategories() || []), ...categories])].map(category => (
                   <option key={category} value={category}>{category}</option>
                 ))}
               </select>
@@ -525,25 +573,39 @@ const AdaptiveProductForm: React.FC<AdaptiveProductFormProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Supplier *
+                Suppliers *
               </label>
-              <select
-                value={formData.supplier}
-                onChange={(e) => setFormData(prev => ({ ...prev, supplier: e.target.value }))}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 ${
-                  errors.supplier ? 'border-red-300' : 'border-gray-300'
-                }`}
-                required
-              >
-                <option value="">Select supplier</option>
-                {suppliers.map(supplier => (
-                  <option key={supplier} value={supplier}>{supplier}</option>
-                ))}
-              </select>
-              {errors.supplier && (
+              <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 border rounded-lg ${errors.suppliers ? 'border-red-300' : 'border-gray-300'}`}>
+                {suppliers.map((s) => {
+                  const checked = formData.suppliers?.includes(s) ?? false;
+                  return (
+                    <label key={s} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          const isChecked = e.target.checked;
+                          setFormData(prev => {
+                            const current = new Set(prev.suppliers || []);
+                            if (isChecked) current.add(s); else current.delete(s);
+                            const next = Array.from(current);
+                            return {
+                              ...prev,
+                              suppliers: next,
+                              supplier: next[0] || '' // keep primary for compatibility
+                            };
+                          });
+                        }}
+                      />
+                      <span>{s}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              {errors.suppliers && (
                 <p className="text-red-600 text-sm mt-1 flex items-center">
                   <AlertCircle className="w-4 h-4 mr-1" />
-                  {errors.supplier}
+                  {errors.suppliers}
                 </p>
               )}
             </div>
@@ -615,6 +677,57 @@ const AdaptiveProductForm: React.FC<AdaptiveProductFormProps> = ({
               <DollarSign className="w-5 h-5 mr-2" />
               Pricing Information
             </h3>
+
+            {/* Currency Selection */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+              <div className="flex items-center gap-3">
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+                >
+                  {currencyOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setCurrencyMode('custom')}
+                  className="px-3 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50"
+                >
+                  Custom…
+                </button>
+              </div>
+              {currencyMode === 'custom' && (
+                <div className="mt-3 flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                    placeholder="e.g., USD, PKR, EUR"
+                    className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (currency.trim()) {
+                        saveCurrency(currency.trim());
+                        const updated = getSavedCurrencies();
+                        setCurrencyOptions(updated);
+                        setCurrencyMode('select');
+                        setCurrency(updated.includes(currency.trim().toUpperCase()) ? currency.trim().toUpperCase() : currency.trim());
+                      }
+                    }}
+                    className="px-3 py-2 text-sm rounded-lg bg-yellow-600 text-white hover:bg-yellow-700"
+                  >
+                    Save Currency
+                  </button>
+                </div>
+              )}
+              <p className="mt-2 text-xs text-gray-600">Last/Store default: <span className="font-medium">{defaultCurrency}</span></p>
+            </div>
+
             <div className="grid md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

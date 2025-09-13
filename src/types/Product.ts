@@ -4,7 +4,8 @@ interface ProductInterface {
   category: string;
   quantity: number;
   expiryDate: string;
-  supplier: string;
+  supplier: string; // primary supplier for display/compatibility
+  suppliers?: string[]; // multiple suppliers selected in UI
   price: number;
   addedDate: string;
   supermarketId: string;
@@ -38,6 +39,8 @@ interface SupermarketInterface {
   parentId?: string; // For sub-store relationship
   isSubStore?: boolean;
   ownerId: string; // User ID who owns this supermarket
+  // Store settings
+  currency?: string; // ISO code like USD, PKR, EUR (user-provided)
   posSystem?: {
     enabled: boolean;
     type: 'square' | 'shopify' | 'custom' | 'none';

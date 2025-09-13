@@ -117,10 +117,6 @@ const ProductTicket = forwardRef<HTMLDivElement, ProductTicketProps>(({
               <span className="font-medium">Weight:</span> {product.weight}
             </div>
           )}
-          
-          <div className="text-gray-600">
-            <span className="font-medium">Exp:</span> {new Date(product.expiryDate).toLocaleDateString()}
-          </div>
         </div>
       </div>
 

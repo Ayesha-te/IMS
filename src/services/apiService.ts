@@ -49,6 +49,13 @@ export const API_ENDPOINTS = {
     PRODUCT_STATS: `${BASE_URL}/api/inventory/products/stats/`,
     SEARCH_BY_BARCODE: (barcode: string) => `${BASE_URL}/api/inventory/products/barcode/${barcode}/`,
     
+    // Clearance Deals
+    CLEARANCE: `${BASE_URL}/api/inventory/clearance/`,
+    CLEARANCE_DETAIL: (id: string) => `${BASE_URL}/api/inventory/clearance/${id}/`,
+    CLEARANCE_ACTIVE: `${BASE_URL}/api/inventory/clearance/active/`,
+    CLEARANCE_BARCODE: (id: string) => `${BASE_URL}/api/inventory/clearance/${id}/barcode/`,
+    CLEARANCE_TICKET: (id: string) => `${BASE_URL}/api/inventory/clearance/${id}/ticket/`,
+    
     // Stock Movements
     STOCK_MOVEMENTS: `${BASE_URL}/api/inventory/stock-movements/`,
     
@@ -264,6 +271,30 @@ export const apiRequest = async (url: string, config: RequestConfig = {}) => {
 
 // Authentication service
 import { STORAGE_KEYS } from '../constants/storageKeys';
+export class ClearanceService {
+  static async getActiveDeals() {
+    return apiRequest(API_ENDPOINTS.INVENTORY.CLEARANCE_ACTIVE, { method: HTTP_METHODS.GET });
+  }
+  static async listDeals() {
+    return apiRequest(API_ENDPOINTS.INVENTORY.CLEARANCE, { method: HTTP_METHODS.GET });
+  }
+  static async createDeal(payload: any) {
+    return apiRequest(API_ENDPOINTS.INVENTORY.CLEARANCE, { method: HTTP_METHODS.POST, body: payload });
+  }
+  static async updateDeal(id: string, payload: any) {
+    return apiRequest(API_ENDPOINTS.INVENTORY.CLEARANCE_DETAIL(id), { method: HTTP_METHODS.PATCH, body: payload });
+  }
+  static async deleteDeal(id: string) {
+    return apiRequest(API_ENDPOINTS.INVENTORY.CLEARANCE_DETAIL(id), { method: HTTP_METHODS.DELETE });
+  }
+  static async getBarcode(id: string) {
+    return apiRequest(API_ENDPOINTS.INVENTORY.CLEARANCE_BARCODE(id), { method: HTTP_METHODS.GET });
+  }
+  static async getTicket(id: string) {
+    return apiRequest(API_ENDPOINTS.INVENTORY.CLEARANCE_TICKET(id), { method: HTTP_METHODS.GET });
+  }
+}
+
 export class AuthService {
   private static tokenKey = STORAGE_KEYS.ACCESS_TOKEN;
   private static refreshTokenKey = STORAGE_KEYS.REFRESH_TOKEN;

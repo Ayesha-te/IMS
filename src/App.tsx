@@ -20,17 +20,18 @@ import POSSync from './components/POSSync';
 import DashboardGraphs from './components/DashboardGraphs';
 import BarcodeTicketManager from './components/BarcodeTicketManager';
 import Orders from './components/Orders';
+import ClearancePage from './components/ClearancePage';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { useProducts, useCategories, useSuppliers, useSupermarkets } from './hooks/useApi';
 import { ProductService, CategoryService, SupplierService, SupermarketService, AuthService } from './services/apiService';
 import { analyzeStoreContext, getNavigationItems } from './utils/storeUtils';
-import { getCategoriesWithFallback, getSuppliersWithFallback } from './data/demoData';
+import { getSuppliersWithFallback } from './data/demoData';
 import DebugStoreInfo from './components/DebugStoreInfo';
 import type { Product, Supermarket, User } from './types/Product';
 
 
 function App() {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'supermarket-overview' | 'scanner' | 'add-product' | 'stores' | 'catalog' | 'analytics' | 'pos-sync' | 'settings' | 'barcode-demo' | 'suppliers' | 'purchase-orders' | 'purchasing-reports' | 'orders' | 'login' | 'signup'>('login');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'supermarket-overview' | 'scanner' | 'add-product' | 'stores' | 'catalog' | 'analytics' | 'pos-sync' | 'settings' | 'barcode-demo' | 'suppliers' | 'purchase-orders' | 'purchasing-reports' | 'orders' | 'clearance' | 'login' | 'signup'>('login');
   const [products, setProducts] = useState<Product[]>([]);
   const [supermarkets, setSupermarkets] = useState<Supermarket[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -173,7 +174,7 @@ function App() {
       const categoriesResponse = await CategoryService.getCategories();
       const categoriesData = Array.isArray(categoriesResponse) ? categoriesResponse : categoriesResponse.results || [];
       const apiCategories = categoriesData.map((cat: any) => cat.name || cat.toString());
-      setCategories(getCategoriesWithFallback(apiCategories));
+      setCategories(Array.from(new Set(apiCategories)).filter(Boolean));
 
       // Load suppliers
       const suppliersResponse = await SupplierService.getSuppliers();
@@ -493,6 +494,7 @@ function App() {
   // Get store context and adaptive navigation
   const storeContext = analyzeStoreContext(supermarkets, currentUser);
   const navigationItems = getNavigationItems(storeContext, isAuthenticated);
+  console.log('Navigation Items:', navigationItems);
 
   // Get user's primary store
   const primaryStore = supermarkets.find(s => !s.isSubStore && s.ownerId === currentUser?.id) || supermarkets[0];
@@ -544,8 +546,8 @@ function App() {
         {/* Navigation */}
         {isAuthenticated && (
           <nav className="mb-8">
-            <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-rose-200 p-4">
-              <div className="flex flex-wrap gap-2">
+            <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-rose-200 p-3">
+              <div className="flex flex-wrap gap-1">
                 {navigationItems.map((item) => (
                   <button
                     key={item.id}
@@ -553,14 +555,14 @@ function App() {
                       setCurrentView(item.id as any);
                       setEditingProduct(null);
                     }}
-                    className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center space-x-2 ${
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-1 ${
                       currentView === item.id
                         ? 'bg-rose-500 text-white shadow-lg'
                         : 'bg-white/50 text-gray-700 hover:bg-white/80'
                     }`}
                   >
-                    <span>{item.icon}</span>
-                    <span className="hidden sm:inline">{item.label}</span>
+                    <span className="text-sm">{item.icon}</span>
+                    <span className="hidden sm:inline text-xs">{item.label}</span>
                   </button>
                 ))}
               </div>
@@ -752,6 +754,10 @@ function App() {
 
               {currentView === 'orders' && (
                 <Orders />
+              )}
+
+              {currentView === 'clearance' && (
+                <ClearancePage />
               )}
 
               {currentView === 'settings' && (

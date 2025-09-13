@@ -18,6 +18,8 @@ export default function Suppliers() {
   const [error, setError] = useState<string>('');
   const [poSummary, setPoSummary] = useState<any[]>([]);
   const [supermarkets, setSupermarkets] = useState<{ id: string; name: string }[]>([]);
+  // Reference to scroll to the PO section when starting a PO from supplier row
+  const poSectionRef = React.useRef<HTMLDivElement>(null);
 
   // Create/Edit supplier form
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -41,10 +43,12 @@ export default function Suppliers() {
   const [productSuppliers, setProductSuppliers] = useState<any[]>([]);
 
   // PO form (manual) + Excel import
-  const [poForm, setPoForm] = useState<{ supplierId: string; supermarketName: string; poNumber: string; expectedDate: string; paymentTerms: string; buyerName: string; notes: string }>(
-    { supplierId: '', supermarketName: '', poNumber: '', expectedDate: '', paymentTerms: 'Net 30', buyerName: '', notes: '' }
+  const [poForm, setPoForm] = useState<{ supplierId: string; supermarketName: string; expectedDate: string; paymentTerms: string; buyerName: string; notes: string }>(
+    { supplierId: '', supermarketName: '', expectedDate: '', paymentTerms: 'Net 30', buyerName: '', notes: '' }
   );
-  const [poItem, setPoItem] = useState<{ productName: string; quantity: string; unitPrice: string }>({ productName: '', quantity: '1', unitPrice: '0' });
+  const [poItems, setPoItems] = useState<Array<{ productName: string; quantity: string; unitPrice: string }>>([
+    { productName: '', quantity: '1', unitPrice: '0' }
+  ]);
 
   const supplierOptions = useMemo(() => suppliers.map(s => ({ value: String(s.id), label: s.name })), [suppliers]);
   const productOptions = useMemo(() => products.map(p => ({ value: String(p.id), label: p.name })), [products]);
@@ -162,7 +166,8 @@ export default function Suppliers() {
 
   const submitPO = async () => {
     if (!poForm.supplierId) { setError('Select supplier for PO'); return; }
-    if (!poItem.productName.trim()) { setError('Enter product name'); return; }
+    const validItems = poItems.filter(it => it.productName.trim() && Number(it.quantity) > 0);
+    if (!validItems.length) { setError('Add at least one line item'); return; }
     setLoading(true); setError('');
     try {
       const supermarketName = (poForm.supermarketName || '').trim();
@@ -177,17 +182,17 @@ export default function Suppliers() {
       const payload: any = {
         supplier: Number(poForm.supplierId),
         supermarket: supermarketId, // always send ID
-        po_number: poForm.poNumber || undefined,
+        // Omit po_number so backend auto-generates it
         expected_delivery_date: poForm.expectedDate || undefined,
         payment_terms: poForm.paymentTerms || undefined,
         buyer_name: poForm.buyerName || undefined,
         notes: poForm.notes || undefined,
-        items: [{ product_text: poItem.productName, quantity: Number(poItem.quantity), unit_price: Number(poItem.unitPrice) }],
+        items: validItems.map(it => ({ product_text: it.productName, quantity: Number(it.quantity), unit_price: Number(it.unitPrice || '0') })),
       };
       console.log('PO creation payload:', payload);
       await PurchaseOrderService.create(payload);
-      setPoForm({ supplierId: '', supermarketName: '', poNumber: '', expectedDate: '', paymentTerms: 'Net 30', buyerName: '', notes: '' });
-      setPoItem({ productName: '', quantity: '1', unitPrice: '0' });
+      setPoForm({ supplierId: '', supermarketName: '', expectedDate: '', paymentTerms: 'Net 30', buyerName: '', notes: '' });
+      setPoItems([{ productName: '', quantity: '1', unitPrice: '0' }]);
       const res = await PurchaseOrderService.list();
       console.log('PO list after creation:', res);
       setPoSummary(Array.isArray(res) ? res : res.results || []);
@@ -278,7 +283,7 @@ export default function Suppliers() {
         const items = group.items.map((it: any) => ({ product_text: it.product_name, quantity: Number(it.quantity||0), unit_price: Number(it.unit_price||0) }));
         const payload: any = {
           supplier: supplierId,
-          po_number: group.po_number || undefined,
+          // Omit po_number so backend auto-generates it
           expected_delivery_date: group.expected_delivery_date || undefined,
           payment_terms: group.payment_terms || undefined,
           buyer_name: group.buyer_name || undefined,
@@ -408,6 +413,16 @@ export default function Suppliers() {
                     <td className="p-2">{s.credit_days ?? '-'}</td>
                     <td className="p-2">{poCount}</td>
                     <td className="p-2 space-x-2">
+                      <button
+                        onClick={() => {
+                          setPoForm(prev => ({ ...prev, supplierId: String(s.id) }));
+                          const el = document.getElementById('po-section');
+                          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }}
+                        className="px-3 py-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                      >
+                        Create PO
+                      </button>
                       <button onClick={() => startEdit(s)} className="px-3 py-1 text-blue-600 hover:underline">Edit</button>
                       <button onClick={() => removeSupplier(s.id)} className="px-3 py-1 text-rose-600 hover:underline">Delete</button>
                     </td>
@@ -419,127 +434,11 @@ export default function Suppliers() {
         </div>
       </section>
 
-      {/* Product Supplier Selection */}
-      <section className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-rose-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-3">Product Supplier Selection</h3>
-        {/* Controls: multi-select dropdown with checkboxes + qty + recommend */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end mb-4">
-          <div className="md:col-span-1 relative">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Select products</label>
-            <button
-              type="button"
-              className="w-full px-3 py-2 border rounded-lg text-left bg-white"
-              onClick={() => setIsProductDropdownOpen(v => !v)}
-            >
-              {selectedProductIds.length ? `${selectedProductIds.length} selected` : 'Choose products'}
-            </button>
-            {isProductDropdownOpen && (
-              <div className="absolute z-10 mt-1 w-full max-h-56 overflow-auto bg-white border rounded-lg shadow">
-                <div className="p-2 sticky top-0 bg-white border-b">
-                  <input
-                    placeholder="Filter products..."
-                    className="w-full px-2 py-1 border rounded"
-                    onChange={e => {
-                      const q = e.target.value.toLowerCase();
-                      (window as any).__PR_FILTER__ = q;
-                      setProducts(p => [...p]);
-                    }}
-                  />
-                </div>
-                <ul className="max-h-48 overflow-auto">
-                  {products
-                    .filter(p => !((window as any).__PR_FILTER__) || p.name.toLowerCase().includes((window as any).__PR_FILTER__))
-                    .map(p => {
-                      const checked = selectedProductIds.includes(p.id);
-                      return (
-                        <li key={p.id} className="px-3 py-2 flex items-center gap-2 hover:bg-gray-50">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={e => {
-                              setSelectedProductIds(prev => e.target.checked ? [...prev, p.id] : prev.filter(id => id !== p.id));
-                            }}
-                          />
-                          <span className="text-sm">{p.name}</span>
-                        </li>
-                      );
-                    })}
-                </ul>
-                <div className="p-2 border-t bg-gray-50 flex justify-between">
-                  <button className="text-xs px-2 py-1" onClick={() => setSelectedProductIds(products.map(p => p.id))}>Select all</button>
-                  <button className="text-xs px-2 py-1" onClick={() => setSelectedProductIds([])}>Clear</button>
-                  <button className="text-xs px-2 py-1" onClick={() => setIsProductDropdownOpen(false)}>Done</button>
-                </div>
-              </div>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Quantity (per product)</label>
-            <input className="w-full px-3 py-2 border rounded-lg" type="number" min={1} value={bestForm.qty} onChange={e => setBestForm({ ...bestForm, qty: e.target.value })} />
-          </div>
-          <div className="flex items-end">
-            <button onClick={findBestSupplier} className="w-full px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700">Recommend Best</button>
-          </div>
-        </div>
 
-        {/* Results */}
-        {!!Object.keys(bestResults).length && (
-          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-sm">
-            <div className="font-semibold mb-1">Best Recommendations</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-              {selectedProductIds.map(pid => {
-                const res = bestResults[pid];
-                const name = products.find(p => p.id === pid)?.name || pid;
-                return (
-                  <div key={pid} className="p-2 bg-white rounded border">
-                    <div className="font-medium">{name}</div>
-                    {res?.error ? (
-                      <div className="text-rose-700">{res.error}</div>
-                    ) : (
-                      <div>
-                        <div><strong>Supplier:</strong> {res?.supplier_name || res?.supplier || 'N/A'}</div>
-                        <div><strong>Price:</strong> {res?.supplier_price ?? res?.price ?? 'N/A'}</div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
 
-        {/* Suppliers table for a single selected product (optional view) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-          <div className="md:col-span-3">
-            <div className="overflow-auto border rounded-xl">
-              <table className="min-w-full text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="text-left p-2">Supplier</th>
-                    <th className="text-left p-2">Price</th>
-                    <th className="text-left p-2">Available Qty</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {productSuppliers.map((ps: any) => (
-                    <tr key={ps.id} className="border-t">
-                      <td className="p-2">{ps.supplier_name || ps.supplier}</td>
-                      <td className="p-2">{ps.supplier_price}</td>
-                      <td className="p-2">{ps.available_quantity ?? '-'}</td>
-                    </tr>
-                  ))}
-                  {!productSuppliers.length && (
-                    <tr><td className="p-2 text-gray-500" colSpan={3}>No suppliers yet</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Purchase Orders on Suppliers page */}
-      <section className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-rose-200 p-6">
+      <section id="po-section" className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-rose-200 p-6">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-semibold text-gray-800">Purchase Orders</h3>
           <div className="flex gap-2">
@@ -566,10 +465,7 @@ export default function Suppliers() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Store (supermarket name)</label>
             <input className="w-full px-3 py-2 border rounded-lg" placeholder="e.g., Main Store" value={poForm.supermarketName} onChange={e => setPoForm({ ...poForm, supermarketName: e.target.value })} />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">PO Number</label>
-            <input className="w-full px-3 py-2 border rounded-lg" placeholder="PO-2025-01" value={poForm.poNumber} onChange={e => setPoForm({ ...poForm, poNumber: e.target.value })} />
-          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Expected Date</label>
             <input type="date" className="w-full px-3 py-2 border rounded-lg" value={poForm.expectedDate} onChange={e => setPoForm({ ...poForm, expectedDate: e.target.value })} />
@@ -588,23 +484,59 @@ export default function Suppliers() {
           </div>
         </div>
         <div className="mb-3">
-          <div className="font-medium mb-2">Item</div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
-              <input className="w-full px-3 py-2 border rounded-lg" placeholder="e.g., Dell Laptop" value={poItem.productName}
-                onChange={e => setPoItem({ ...poItem, productName: e.target.value })} />
+          <div className="flex items-center justify-between mb-2">
+            <div className="font-medium">Items</div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPoItems(prev => [...prev, { productName: '', quantity: '1', unitPrice: '0' }])}
+                className="px-3 py-1 border rounded-lg text-sm"
+              >+ Add Item</button>
+              {poItems.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setPoItems(prev => prev.slice(0, -1))}
+                  className="px-3 py-1 border rounded-lg text-sm"
+                >- Remove Last</button>
+              )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Qty</label>
-              <input type="number" min={1} className="w-full px-3 py-2 border rounded-lg" value={poItem.quantity}
-                onChange={e => setPoItem({ ...poItem, quantity: e.target.value })} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Unit Price</label>
-              <input type="number" min={0} step={0.01} className="w-full px-3 py-2 border rounded-lg" value={poItem.unitPrice}
-                onChange={e => setPoItem({ ...poItem, unitPrice: e.target.value })} />
-            </div>
+          </div>
+
+          <div className="space-y-3">
+            {poItems.map((it, idx) => (
+              <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
+                  <input
+                    className="w-full px-3 py-2 border rounded-lg"
+                    placeholder="e.g., Dell Laptop"
+                    value={it.productName}
+                    onChange={e => setPoItems(prev => prev.map((row, i) => i === idx ? { ...row, productName: e.target.value } : row))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Qty</label>
+                  <input
+                    type="number"
+                    min={1}
+                    className="w-full px-3 py-2 border rounded-lg"
+                    value={it.quantity}
+                    onChange={e => setPoItems(prev => prev.map((row, i) => i === idx ? { ...row, quantity: e.target.value } : row))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Unit Price</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    className="w-full px-3 py-2 border rounded-lg"
+                    value={it.unitPrice}
+                    onChange={e => setPoItems(prev => prev.map((row, i) => i === idx ? { ...row, unitPrice: e.target.value } : row))}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
         <div className="flex gap-2">

@@ -3,6 +3,10 @@ import { Save, X, Package, FileSpreadsheet, Camera, Plus, Store } from 'lucide-r
 import type { Product, Supermarket } from '../types/Product';
 import ExcelUpload from './ExcelUpload';
 import ImageImport from './ImageImport';
+import { CategoryService, SupplierService } from '../services/apiService';
+import { getSavedCurrencies, saveCurrency, getDefaultCurrency } from '../utils/currencyOptions';
+import { getSavedCategories, saveCategory } from '../utils/categoryOptions';
+import { getSavedSuppliers, saveSupplier, type SupplierOption } from '../utils/supplierOptions';
 
 interface ProductFormProps {
   onSave: (product: Product | Omit<Product, 'id'>) => void;
@@ -12,10 +16,10 @@ interface ProductFormProps {
   onCancel: () => void;
   supermarketId: string;
   userStores?: Supermarket[];
-  supplierOptions?: { id: number|string; name: string }[]; // dropdown options
+  supplierOptions?: SupplierOption[]; // dropdown options
 }
 
-const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiStoreSave, initialProduct, onCancel, supermarketId, userStores = [], supplierOptions = [] }) => {
+const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiStoreSave, initialProduct, onCancel, supermarketId, userStores = [] }) => {
   const [currentView, setCurrentView] = useState<'options' | 'manual' | 'excel' | 'image'>('options');
   const [addToAllStores, setAddToAllStores] = useState(false);
 
@@ -28,6 +32,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
     price: 0,
     costPrice: 0,
     sellingPrice: 0,
+    minStockLevel: 5, // reorder level
     addedDate: new Date().toISOString().split('T')[0],
     supermarketId: supermarketId, // Use passed supermarket ID
     description: '',
@@ -35,6 +40,27 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
     weight: '',
     origin: ''
   });
+
+  // Compute selected store currency from userStores (no default fallback)
+  const selectedStore = userStores.find(store => store.id === (formData.supermarketId || supermarketId));
+  const selectedCurrency = selectedStore?.currency || '';
+
+  // User-defined currency selection with persistence (no default value)
+  const [currencyOptions, setCurrencyOptions] = useState<string[]>([]);
+  const [currencyMode, setCurrencyMode] = useState<'select' | 'custom'>('select');
+  const [currency, setCurrency] = useState<string>('');
+
+  useEffect(() => {
+    const opts = getSavedCurrencies();
+    setCurrencyOptions(opts);
+    setCurrencyMode(opts.length ? 'select' : 'custom');
+    // Only set currency if user has saved currencies, no default
+    if (opts.length > 0) {
+      setCurrency(opts[0]); // Use first saved currency
+    } else {
+      setCurrency(''); // No default, force user to create one
+    }
+  }, []);
 
   useEffect(() => {
     if (initialProduct) {
@@ -143,7 +169,138 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
 
 
 
-  const categories = ['Meat', 'Dairy', 'Snacks', 'Beverages', 'Frozen', 'Bakery', 'Condiments', 'Other'];
+  // Categories: user-defined with persistence + backend fetch fallback (no builtin list)
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
+  const [categoryMode, setCategoryMode] = useState<'select' | 'custom'>('select');
+
+  // Suppliers: user-defined with persistence + backend fetch fallback (no builtin list)
+  const [supplierOptions, setSupplierOptions] = useState<SupplierOption[]>([]);
+  const [supplierMode, setSupplierMode] = useState<'select' | 'custom'>('select');
+
+  useEffect(() => {
+    // Initialize from saved categories only (user-created)
+    try {
+      const saved = getSavedCategories();
+      setCategoryOptions(saved);
+      setCategoryMode(saved.length ? 'select' : 'custom');
+    } catch {}
+
+    // Optional: also fetch backend and merge into saved so future sessions have them
+    const loadCategories = async () => {
+      try {
+        const res = await CategoryService.getCategories();
+        const list = Array.isArray(res) ? res : (res?.results || []);
+        const names = list
+          .map((c: any) => String(c?.name || ''))
+          .filter(Boolean);
+        if (names.length) {
+          const merged = Array.from(new Set([...(getSavedCategories() || []), ...names])).sort((a, b) => a.localeCompare(b));
+          merged.forEach((n: string) => saveCategory(n));
+          setCategoryOptions(merged);
+          setCategoryMode('select');
+        }
+      } catch {}
+    };
+    loadCategories();
+
+    // Initialize suppliers
+    try {
+      const savedSuppliers = getSavedSuppliers();
+      setSupplierOptions(savedSuppliers);
+      setSupplierMode(savedSuppliers.length ? 'select' : 'custom');
+    } catch {}
+
+    // Optional: also fetch backend suppliers and merge into saved
+    const loadSuppliers = async () => {
+      try {
+        const res = await SupplierService.getSuppliers();
+        const list = Array.isArray(res) ? res : (res?.results || []);
+        const suppliers = list
+          .map((s: any, index: number) => ({
+            id: String(s?.id || `backend-${index}`),
+            name: String(s?.name || '')
+          }))
+          .filter(supplier => supplier.name.length > 0);
+        
+        if (suppliers.length) {
+          const saved = getSavedSuppliers();
+          const merged: SupplierOption[] = [];
+          
+          // Add existing saved suppliers
+          saved.forEach(supplier => {
+            if (!merged.some(s => s.name === supplier.name)) {
+              merged.push(supplier);
+            }
+          });
+          
+          // Add backend suppliers
+          suppliers.forEach((supplier: SupplierOption) => {
+            if (!merged.some(s => s.name === supplier.name)) {
+              merged.push(supplier);
+              saveSupplier(supplier.name, supplier.id);
+            }
+          });
+          
+          merged.sort((a, b) => a.name.localeCompare(b.name));
+          setSupplierOptions(merged);
+          setSupplierMode('select');
+        }
+      } catch {}
+    };
+    loadSuppliers();
+  }, []);
+
+  const handleAddCategory = async () => {
+    const name = window.prompt('Enter new category name');
+    if (!name || !name.trim()) return;
+    const clean = name.trim();
+    try {
+      // Persist locally first so it's immediately available next time
+      saveCategory(clean);
+      const updated = getSavedCategories();
+      setCategoryOptions(updated);
+      setFormData(prev => ({ ...prev, category: clean }));
+      // Try backend create non-blocking (optional)
+      try { await CategoryService.createCategory({ name: clean }); } catch {}
+    } catch (e: any) {
+      alert(e?.message || 'Failed to create category');
+    }
+  };
+
+  const handleAddSupplier = async () => {
+    const name = window.prompt('Enter new supplier name');
+    if (!name || !name.trim()) return;
+    const clean = name.trim();
+    try {
+      // Persist locally first so it's immediately available next time
+      saveSupplier(clean);
+      const updated = getSavedSuppliers();
+      setSupplierOptions(updated);
+      setFormData(prev => ({ ...prev, supplier: clean }));
+      // Try backend create non-blocking (optional)
+      try { await SupplierService.createSupplier({ name: clean }); } catch {}
+    } catch (e: any) {
+      alert(e?.message || 'Failed to create supplier');
+    }
+  };
+
+  const handleAddCurrency = async () => {
+    const code = window.prompt('Enter new currency code (e.g., EUR, GBP, CAD)');
+    if (!code || !code.trim()) return;
+    const clean = code.trim().toUpperCase();
+    if (clean.length !== 3) {
+      alert('Currency code must be exactly 3 characters');
+      return;
+    }
+    try {
+      saveCurrency(clean);
+      const updated = getSavedCurrencies();
+      setCurrencyOptions(updated);
+      setCurrency(clean);
+    } catch (e: any) {
+      alert(e?.message || 'Failed to add currency');
+    }
+  };
 
   // Handle bulk import from Excel
   const handleExcelImport = (products: Omit<Product, 'id'>[]) => {
@@ -246,6 +403,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
           onProductsExtracted={handleExcelImport}
           onCancel={() => setCurrentView('options')}
           supermarketId={supermarketId}
+          storeCurrency={selectedCurrency}
         />
       )}
 
@@ -309,6 +467,31 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
               </select>
             </div>
 
+            {/* Currency */}
+            <div>
+              <div className="flex items-center justify-between">
+                <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-2">
+                  Currency *
+                </label>
+                <button type="button" onClick={handleAddCurrency} className="text-sm text-rose-600 hover:text-rose-700 flex items-center gap-1">
+                  <Plus className="w-4 h-4" /> Add
+                </button>
+              </div>
+              <select
+                id="currency"
+                name="currency"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                required
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80"
+              >
+                <option value="">Select currency</option>
+                {currencyOptions.map(curr => (
+                  <option key={curr} value={curr}>{curr}</option>
+                ))}
+              </select>
+            </div>
+
             {/* Product Name */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
@@ -333,9 +516,14 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
 
             {/* Category */}
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
-                Category *
-              </label>
+              <div className="flex items-center justify-between">
+                <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
+                  Category *
+                </label>
+                <button type="button" onClick={handleAddCategory} className="text-sm text-rose-600 hover:text-rose-700 flex items-center gap-1">
+                  <Plus className="w-4 h-4" /> Add
+                </button>
+              </div>
               <select
                 id="category"
                 name="category"
@@ -346,7 +534,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
                 className={`w-full px-4 py-3 border ${fieldErrors.category ? 'border-red-300' : 'border-gray-200'} rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80`}
               >
                 <option value="">Select a category</option>
-                {categories.map(cat => (
+                {categoryOptions.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
@@ -354,9 +542,14 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
 
             {/* Supplier */}
             <div>
-              <label htmlFor="supplier" className="block text-sm font-medium text-gray-700 mb-2">
-                Supplier *
-              </label>
+              <div className="flex items-center justify-between">
+                <label htmlFor="supplier" className="block text-sm font-medium text-gray-700 mb-2">
+                  Supplier *
+                </label>
+                <button type="button" onClick={handleAddSupplier} className="text-sm text-rose-600 hover:text-rose-700 flex items-center gap-1">
+                  <Plus className="w-4 h-4" /> Add
+                </button>
+              </div>
               <select
                 id="supplier"
                 name="supplier"
@@ -394,6 +587,23 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
               />
             </div>
 
+            {/* Re-order Level */}
+            <div>
+              <label htmlFor="minStockLevel" className="block text-sm font-medium text-gray-700 mb-2">
+                Re-order Level
+              </label>
+              <input
+                type="number"
+                id="minStockLevel"
+                name="minStockLevel"
+                value={formData.minStockLevel}
+                onChange={handleChange}
+                min="0"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80"
+                placeholder="Enter minimum stock level for alerts"
+              />
+            </div>
+
             {/* Expiry Date */}
             <div>
               <label htmlFor="expiryDate" className="block text-sm font-medium text-gray-700 mb-2">
@@ -414,10 +624,61 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
               )}
             </div>
 
+            {/* Currency Selection */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+              {currencyMode === 'select' ? (
+                <div className="flex items-center gap-3">
+                  <select
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                    className="w-full max-w-xs px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80"
+                  >
+                    {currencyOptions.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setCurrencyMode('custom')}
+                    className="px-3 py-2 text-sm rounded-lg border border-gray-200 hover:bg-gray-50"
+                  >
+                    Custom…
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                    placeholder="e.g., USD, PKR, EUR"
+                    className="w-full max-w-xs px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (currency.trim()) {
+                        saveCurrency(currency.trim());
+                        const updated = getSavedCurrencies();
+                        setCurrencyOptions(updated);
+                        setCurrencyMode('select');
+                        setCurrency(updated.includes(currency.trim().toUpperCase()) ? currency.trim().toUpperCase() : currency.trim());
+                      }
+                    }}
+                    className="px-3 py-2 text-sm rounded-lg bg-rose-600 text-white hover:bg-rose-700"
+                  >
+                    Save Currency
+                  </button>
+                </div>
+              )}
+              <p className="mt-2 text-xs text-gray-600">Store currency: <span className="font-medium">{selectedCurrency}</span></p>
+            </div>
+
             {/* Cost Price */}
             <div>
               <label htmlFor="costPrice" className="block text-sm font-medium text-gray-700 mb-2">
-                Cost Price ($) *
+                Cost Price ({currency}) *
               </label>
               <input
                 type="number"
@@ -440,7 +701,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
             {/* Selling Price */}
             <div>
               <label htmlFor="sellingPrice" className="block text-sm font-medium text-gray-700 mb-2">
-                Selling Price ($) *
+                Selling Price ({currency}) *
               </label>
               <input
                 type="number"
@@ -463,7 +724,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
             {/* Display Price (calculated or manual) */}
             <div>
               <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
-                Display Price ($)
+                Display Price ({currency})
               </label>
               <input
                 type="number"
@@ -526,25 +787,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onBulkSave, onMultiSt
               />
             </div>
 
-            {/* Expiry Date */}
-            <div className="md:col-span-2">
-              <label htmlFor="expiryDate" className="block text-sm font-medium text-gray-700 mb-2">
-                Expiry Date *
-              </label>
-              <input
-                type="date"
-                id="expiryDate"
-                name="expiryDate"
-                value={formData.expiryDate}
-                onChange={handleChange}
-                required
-                aria-invalid={!!fieldErrors.expiryDate}
-                className={`w-full px-4 py-3 border ${fieldErrors.expiryDate ? 'border-red-300' : 'border-gray-200'} rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white/80`}
-              />
-              {fieldErrors.expiryDate && (
-                <p className="mt-1 text-xs text-red-600">{fieldErrors.expiryDate}</p>
-              )}
-            </div>
+
 
             {/* Description */}
             <div className="md:col-span-2">

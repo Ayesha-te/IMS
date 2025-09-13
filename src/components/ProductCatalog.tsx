@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Package, MapPin, CheckCircle, Calendar, DollarSign } from 'lucide-react';
 import type { Product, Supermarket } from '../types/Product';
+import { DEFAULT_REORDER_LEVEL } from '../constants/inventory';
 
 interface ProductCatalogProps {
   products: Product[];
@@ -12,9 +13,16 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, supermarkets 
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterSupermarket, setFilterSupermarket] = useState('all');
   const [sortBy, setSortBy] = useState('price-high');
+  const [lowStockOnly, setLowStockOnly] = useState(false);
 
   // Build non-empty category list
   const categories = ['all', ...Array.from(new Set(products.map(p => p.category).filter(c => !!c && String(c).trim() !== '')))] as string[];
+
+  // Low stock count for alert banner
+  const lowStockCount = products.filter(p => {
+    const threshold = typeof p.minStockLevel === 'number' ? p.minStockLevel : DEFAULT_REORDER_LEVEL;
+    return typeof p.quantity === 'number' && p.quantity <= threshold;
+  }).length;
 
   // Resolve a supermarket display name from either an ID or a name value
   const getSupermarketName = (supermarketRef: string) => {
@@ -44,7 +52,11 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, supermarkets 
       const matchesSupermarket = filterSupermarket === 'all' || 
         String(product.supermarketId) === String(filterSupermarket);
 
-      return matchesSearch && matchesCategory && matchesSupermarket && (product.halalCertified ?? true);
+      const threshold = typeof product.minStockLevel === 'number' ? product.minStockLevel : DEFAULT_REORDER_LEVEL;
+      const isLowStock = typeof product.quantity === 'number' && product.quantity <= threshold;
+      const matchesLowStock = !lowStockOnly || isLowStock;
+
+      return matchesSearch && matchesCategory && matchesSupermarket && matchesLowStock && (product.halalCertified ?? true);
     })
     .sort((a, b) => {
       const numA = (val: any) => Number(val ?? 0);
@@ -91,7 +103,7 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, supermarkets 
         </div>
 
         {/* Filters and Search */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -136,6 +148,17 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, supermarkets 
             <option value="expiry">Expiry Date</option>
             <option value="quantity">Stock Quantity</option>
           </select>
+
+          {/* Low stock filter */}
+          <label className="flex items-center gap-2 px-4 py-3 border border-gray-200 rounded-xl bg-white/80">
+            <input
+              type="checkbox"
+              checked={lowStockOnly}
+              onChange={(e) => setLowStockOnly(e.target.checked)}
+              className="h-4 w-4 text-rose-600 focus:ring-rose-500 border-gray-300 rounded"
+            />
+            <span className="text-sm text-gray-700">Low stock only</span>
+          </label>
         </div>
       </div>
 
@@ -186,6 +209,15 @@ const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, supermarkets 
                       <div className={`px-2 py-1 rounded-lg text-xs font-medium ${expiryStatus.bg} ${expiryStatus.color}`}>
                         {expiryStatus.status}
                       </div>
+                      {(() => {
+                        const threshold = typeof product.minStockLevel === 'number' ? product.minStockLevel : DEFAULT_REORDER_LEVEL;
+                        const lowStock = typeof product.quantity === 'number' && product.quantity <= threshold;
+                        return lowStock ? (
+                          <div className="px-2 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700">
+                            Low stock
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
 
                     {/* Product Info */}

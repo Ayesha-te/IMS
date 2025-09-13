@@ -17,13 +17,14 @@ import BarcodeTicketManager from './components/BarcodeTicketManager';
 import { STORAGE_KEYS } from './constants/storageKeys';
 import Suppliers from './components/Suppliers';
 import Orders from './components/Orders';
+import ClearancePage from './components/ClearancePage';
 
 import type { Product, User } from './types/Product';
 
 // Main App Content Component
 const AppContent: React.FC = () => {
   const { user, isAuthenticated, isLoading, login, logout, register } = useAuth();
-  const [currentView, setCurrentView] = useState<'dashboard' | 'scanner' | 'add-product' | 'stores' | 'catalog' | 'analytics' | 'pos-sync' | 'settings' | 'barcode-demo' | 'suppliers' | 'orders' | 'login' | 'signup'>('login');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'scanner' | 'add-product' | 'stores' | 'catalog' | 'analytics' | 'pos-sync' | 'settings' | 'barcode-demo' | 'suppliers' | 'orders' | 'clearance' | 'login' | 'signup'>('login');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedForBT, setSelectedForBT] = useState<string[]>([]);
 
@@ -291,6 +292,7 @@ const AppContent: React.FC = () => {
     { id: 'catalog', label: 'Products', icon: '📦' },
     { id: 'add-product', label: 'Add Products', icon: '➕' },
     { id: 'orders', label: 'Orders', icon: '📦' },
+    { id: 'clearance', label: 'Clearance', icon: '🏷️' },
     { id: 'barcode-demo', label: 'Barcodes & Tickets', icon: '🏷️' },
     { id: 'scanner', label: 'Scanner', icon: '📱' },
     { id: 'stores', label: 'My Stores', icon: '🏪' },
@@ -557,6 +559,12 @@ const AppContent: React.FC = () => {
               {currentView === 'orders' && (
                 <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-rose-200 p-8">
                   <Orders />
+                </div>
+              )}
+
+              {currentView === 'clearance' && (
+                <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-rose-200 p-8">
+                  <ClearancePage />
                 </div>
               )}
 

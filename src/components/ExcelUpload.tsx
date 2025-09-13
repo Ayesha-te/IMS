@@ -16,6 +16,7 @@ interface ExcelUploadProps {
   onProductsExtracted: (products: Product[]) => void;
   onCancel: () => void;
   supermarketId: string;
+  storeCurrency?: string; // display-only currency badge
 }
 
 interface ExcelRow {
@@ -31,7 +32,7 @@ interface ExcelRow {
   costPrice?: number;
 }
 
-const ExcelUpload: React.FC<ExcelUploadProps> = ({ onProductsExtracted, onCancel, supermarketId }) => {
+const ExcelUpload: React.FC<ExcelUploadProps> = ({ onProductsExtracted, onCancel, supermarketId, storeCurrency }) => {
   console.log('🚀 ExcelUpload component rendered');
   console.log('🏪 ExcelUpload received supermarketId:', supermarketId);
   console.log('📋 ExcelUpload props:', { onProductsExtracted: !!onProductsExtracted, onCancel: !!onCancel, supermarketId });
@@ -99,6 +100,9 @@ const ExcelUpload: React.FC<ExcelUploadProps> = ({ onProductsExtracted, onCancel
     createMissingSuppliers: true
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Currency info note
+  const currencyNote = storeCurrency ? `All prices in ${storeCurrency}` : '';
 
   // Download Excel template
   const downloadTemplate = () => {

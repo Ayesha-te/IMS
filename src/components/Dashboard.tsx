@@ -2,6 +2,8 @@ import React from 'react';
 import { Package } from 'lucide-react';
 import type { Product, Supermarket } from '../types/Product';
 import ProductList from './ProductList';
+import ExpiryAlerts from './ExpiryAlerts';
+import LowStockAlerts from './LowStockAlerts';
 
 interface DashboardProps {
   products: Product[];
@@ -14,6 +16,12 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ products, supermarkets, onEditProduct, onDeleteProduct, fallbackStoreName }) => {
   return (
     <div className="space-y-8">
+      {/* Alerts Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <ExpiryAlerts products={products} />
+        <LowStockAlerts products={products} />
+      </div>
+
       {/* Inventory Overview */}
       <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-rose-200 p-6">
         <div className="flex items-center justify-between mb-6">
